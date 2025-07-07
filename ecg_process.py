@@ -1,36 +1,7 @@
 import numpy as np
 from signal_read import load_mitdb_record
 from ecg_filter import apply_ecg_filters
-
-def segment_heartbeats(signals, r_peaks, beat_types, window=(-100, 199)):
-    """
-    分割心拍信号
-    :param signals: 滤波后信号
-    :param r_peaks: R峰位置数组
-    :param beat_types: 心拍标签数组
-    :param window: 截取窗口（R峰前后点数）
-    :return: 心拍列表, 标签列表
-    """
-    beats = []
-    labels = []
-    valid_labels = ['N','L','R','V','A','F','E','J']  # 有效心拍类型
-    
-    start_offset, end_offset = window
-    
-    for i, peak in enumerate(r_peaks):
-        start_idx = peak + start_offset
-        end_idx = peak + end_offset + 1
-        
-        # 检查边界
-        if start_idx >= 0 and end_idx < len(signals):
-            beat = signals[start_idx:end_idx]
-            label = beat_types[i]
-            
-            if label in valid_labels:
-                beats.append(beat)
-                labels.append(label)
-    
-    return beats, labels
+from ecg_segmenter import segment_heartbeats
 
 def process_ecg_record(record_path):
     """
