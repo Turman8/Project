@@ -2,6 +2,7 @@ import numpy as np
 from signal_read import load_mitdb_record
 from ecg_filter import apply_ecg_filters
 from ecg_segmenter import segment_heartbeats
+from ecg_visualizer import visualize_segmentation
 
 def process_ecg_record(record_path):
     """
@@ -31,3 +32,12 @@ if __name__ == "__main__":
     print(f"总心拍数: {len(beats)}")
     print(f"首5个标签: {labels[:5]}")
     print(f"首段心拍形状: {np.array(beats[0]).shape}")
+
+    signals, fs, r_peaks, _ = load_mitdb_record(record_path)
+    visualize_segmentation(
+    signals=filtered_signals,  # 滤波后信号
+    r_peaks=r_peaks,  # R峰位置
+    beats=beats,      # 分割后的心拍
+    labels=labels,    # 心拍标签
+    fs=fs             # 采样率
+    )
