@@ -1,5 +1,5 @@
 import numpy as np
-from signal_reader import load_mitdb_record
+from signal_read import load_mitdb_record
 from ecg_filter import apply_ecg_filters
 
 def segment_heartbeats(signals, r_peaks, beat_types, window=(-100, 199)):
