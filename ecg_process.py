@@ -23,23 +23,18 @@ def process_ecg_record(record_path):
     denoised_signals = wavelet_denoise(filtered_signals, wavelet='db4', level=4, threshold_type='soft')
     
     # 4. 用降噪后的信号分割心拍
-    beats, labels = segment_heartbeats(denoised_signals, r_peaks, beat_types)
+    beats, labels, beat_indices = segment_heartbeats(denoised_signals, r_peaks, beat_types)
     
     # 5. 标准化心拍
     normalized_beats = normalize_beats(beats)
     
     # 6. 提取心拍特征
-    # 需要传递r_peaks和beat_indices
-    # 计算每个beats对应的R峰在r_peaks中的索引
-    beat_indices = []
-    valid_labels = ['N', 'L', 'R', 'V', 'A', 'F', 'E', 'J']
-    for i, peak in enumerate(r_peaks):
-        if beat_types[i] in valid_labels:
-            beat_indices.append(i)
     features, feature_names = extract_temporal_features(
-        np.array(normalized_beats), r_peaks, beat_indices, fs=fs
+        np.array(normalized_beats),
+        r_peaks,
+        beat_indices,
+        fs=fs
     )
-
     return filtered_signals, beats, labels, denoised_signals, normalized_beats, features, feature_names
 
 if __name__ == "__main__":
