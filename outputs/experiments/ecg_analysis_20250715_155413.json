@@ -1,0 +1,28 @@
+{
+  "signal_length": 10800,
+  "sampling_rate": 360,
+  "r_peaks_count": 35,
+  "beats_count": 34,
+  "feature_count": 15,
+  "feature_names": [
+    "max_val",
+    "min_val",
+    "peak_to_peak",
+    "mean_val",
+    "std_val",
+    "zero_crossings",
+    "energy",
+    "first_diff_mean",
+    "second_diff_mean",
+    "slope_changes",
+    "abs_mean",
+    "energy_ratio",
+    "width_50",
+    "symmetry",
+    "rms"
+  ],
+  "classification_results": {
+    "V": 34
+  },
+  "processing_time": 0.029300451278686523
+}
