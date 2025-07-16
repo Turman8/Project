@@ -1,0 +1,381 @@
+{
+    "1": {
+        "name": "ecg_classify_trained_Pipeline_VITIS_LOOP_41_21",
+        "file": "hls_source\/ecg_trained_classifier.cpp",
+        "fileloc": "39",
+        "instructions": "85",
+        "total_instructions": "85",
+        "calls": "",
+        "basicblocks": "6",
+        "loads": {
+            "G": "1",
+            "L": "3"
+        },
+        "stores": {
+            "L": "6"
+        },
+        "loops": {
+            "L": "1"
+        }
+    },
+    "2": {
+        "name": "ecg_classify_trained_Pipeline_VITIS_LOOP_88_810",
+        "file": "hls_source\/ecg_trained_classifier.cpp",
+        "fileloc": "86",
+        "instructions": "104",
+        "total_instructions": "104",
+        "calls": "",
+        "basicblocks": "4",
+        "loads": {
+            "G": "1",
+            "L": "2"
+        },
+        "stores": {
+            "L": "4"
+        },
+        "loops": {
+            "L": "1"
+        }
+    },
+    "3": {
+        "name": "ecg_classify_trained_Pipeline_VITIS_LOOP_73_68",
+        "file": "hls_source\/ecg_trained_classifier.cpp",
+        "fileloc": "71",
+        "instructions": "134",
+        "total_instructions": "134",
+        "calls": "",
+        "basicblocks": "4",
+        "loads": {
+            "G": "1",
+            "L": "2"
+        },
+        "stores": {
+            "L": "4"
+        },
+        "loops": {
+            "L": "1"
+        }
+    },
+    "4": {
+        "name": "ecg_classify_trained_Pipeline_VITIS_LOOP_73_69",
+        "file": "hls_source\/ecg_trained_classifier.cpp",
+        "fileloc": "71",
+        "instructions": "134",
+        "total_instructions": "134",
+        "calls": "",
+        "basicblocks": "4",
+        "loads": {
+            "G": "1",
+            "L": "2"
+        },
+        "stores": {
+            "L": "4"
+        },
+        "loops": {
+            "L": "1"
+        }
+    },
+    "5": {
+        "name": "ecg_classify_trained_Pipeline_VITIS_LOOP_88_814",
+        "file": "hls_source\/ecg_trained_classifier.cpp",
+        "fileloc": "86",
+        "instructions": "103",
+        "total_instructions": "103",
+        "calls": "",
+        "basicblocks": "4",
+        "loads": {
+            "G": "1",
+            "L": "2"
+        },
+        "stores": {
+            "L": "4"
+        },
+        "loops": {
+            "L": "1"
+        }
+    },
+    "6": {
+        "name": "ecg_classify_trained_Pipeline_VITIS_LOOP_101_9",
+        "file": "hls_source\/ecg_trained_classifier.cpp",
+        "fileloc": "94",
+        "instructions": "34",
+        "total_instructions": "34",
+        "calls": "",
+        "basicblocks": "4",
+        "loads": {
+            "L": "4"
+        },
+        "stores": {
+            "L": "6"
+        },
+        "loops": {
+            "L": "1"
+        }
+    },
+    "7": {
+        "name": "ecg_classify_trained_Pipeline_VITIS_LOOP_73_67",
+        "file": "hls_source\/ecg_trained_classifier.cpp",
+        "fileloc": "71",
+        "instructions": "134",
+        "total_instructions": "134",
+        "calls": "",
+        "basicblocks": "4",
+        "loads": {
+            "G": "1",
+            "L": "2"
+        },
+        "stores": {
+            "L": "4"
+        },
+        "loops": {
+            "L": "1"
+        }
+    },
+    "8": {
+        "name": "ecg_classify_trained_Pipeline_VITIS_LOOP_57_44",
+        "file": "hls_source\/ecg_trained_classifier.cpp",
+        "fileloc": "55",
+        "instructions": "198",
+        "total_instructions": "198",
+        "calls": "",
+        "basicblocks": "4",
+        "loads": {
+            "G": "1",
+            "L": "2"
+        },
+        "stores": {
+            "L": "4"
+        },
+        "loops": {
+            "L": "1"
+        }
+    },
+    "9": {
+        "name": "ecg_classify_trained_Pipeline_VITIS_LOOP_73_6",
+        "file": "hls_source\/ecg_trained_classifier.cpp",
+        "fileloc": "71",
+        "instructions": "134",
+        "total_instructions": "134",
+        "calls": "",
+        "basicblocks": "4",
+        "loads": {
+            "G": "1",
+            "L": "2"
+        },
+        "stores": {
+            "L": "4"
+        },
+        "loops": {
+            "L": "1"
+        }
+    },
+    "10": {
+        "name": "ecg_classify_trained_Pipeline_VITIS_LOOP_41_2",
+        "file": "hls_source\/ecg_trained_classifier.cpp",
+        "fileloc": "39",
+        "instructions": "85",
+        "total_instructions": "85",
+        "calls": "",
+        "basicblocks": "6",
+        "loads": {
+            "G": "1",
+            "L": "3"
+        },
+        "stores": {
+            "L": "6"
+        },
+        "loops": {
+            "L": "1"
+        }
+    },
+    "11": {
+        "name": "ecg_classify_trained_Pipeline_VITIS_LOOP_88_812",
+        "file": "hls_source\/ecg_trained_classifier.cpp",
+        "fileloc": "86",
+        "instructions": "103",
+        "total_instructions": "103",
+        "calls": "",
+        "basicblocks": "4",
+        "loads": {
+            "G": "1",
+            "L": "2"
+        },
+        "stores": {
+            "L": "4"
+        },
+        "loops": {
+            "L": "1"
+        }
+    },
+    "12": {
+        "name": "ecg_classify_trained_Pipeline_VITIS_LOOP_88_811",
+        "file": "hls_source\/ecg_trained_classifier.cpp",
+        "fileloc": "86",
+        "instructions": "103",
+        "total_instructions": "103",
+        "calls": "",
+        "basicblocks": "4",
+        "loads": {
+            "G": "1",
+            "L": "2"
+        },
+        "stores": {
+            "L": "4"
+        },
+        "loops": {
+            "L": "1"
+        }
+    },
+    "13": {
+        "name": "ecg_classify_trained_Pipeline_VITIS_LOOP_57_46",
+        "file": "hls_source\/ecg_trained_classifier.cpp",
+        "fileloc": "55",
+        "instructions": "198",
+        "total_instructions": "198",
+        "calls": "",
+        "basicblocks": "4",
+        "loads": {
+            "G": "1",
+            "L": "2"
+        },
+        "stores": {
+            "L": "4"
+        },
+        "loops": {
+            "L": "1"
+        }
+    },
+    "0": {
+        "name": "ecg_classify_trained",
+        "file": "ecg_trained_classifier.cpp",
+        "fileloc": "23",
+        "instructions": "2090",
+        "total_instructions": "4410",
+        "calls": "10 1 19 8 16 2 12 11 14 5 6 9 7 3 4 17 13 15 18",
+        "basicblocks": "246",
+        "loads": {
+            "G": "12",
+            "L": "662"
+        },
+        "stores": {
+            "L": "230"
+        },
+        "loops": {
+            "L": "3"
+        }
+    },
+    "14": {
+        "name": "ecg_classify_trained_Pipeline_VITIS_LOOP_88_813",
+        "file": "hls_source\/ecg_trained_classifier.cpp",
+        "fileloc": "86",
+        "instructions": "103",
+        "total_instructions": "103",
+        "calls": "",
+        "basicblocks": "4",
+        "loads": {
+            "G": "1",
+            "L": "2"
+        },
+        "stores": {
+            "L": "4"
+        },
+        "loops": {
+            "L": "1"
+        }
+    },
+    "15": {
+        "name": "ecg_classify_trained_Pipeline_VITIS_LOOP_41_22",
+        "file": "hls_source\/ecg_trained_classifier.cpp",
+        "fileloc": "39",
+        "instructions": "85",
+        "total_instructions": "85",
+        "calls": "",
+        "basicblocks": "6",
+        "loads": {
+            "G": "1",
+            "L": "3"
+        },
+        "stores": {
+            "L": "6"
+        },
+        "loops": {
+            "L": "1"
+        }
+    },
+    "16": {
+        "name": "ecg_classify_trained_Pipeline_VITIS_LOOP_88_8",
+        "file": "hls_source\/ecg_trained_classifier.cpp",
+        "fileloc": "86",
+        "instructions": "102",
+        "total_instructions": "102",
+        "calls": "",
+        "basicblocks": "4",
+        "loads": {
+            "G": "1",
+            "L": "2"
+        },
+        "stores": {
+            "L": "4"
+        },
+        "loops": {
+            "L": "1"
+        }
+    },
+    "17": {
+        "name": "ecg_classify_trained_Pipeline_VITIS_LOOP_57_45",
+        "file": "hls_source\/ecg_trained_classifier.cpp",
+        "fileloc": "55",
+        "instructions": "198",
+        "total_instructions": "198",
+        "calls": "",
+        "basicblocks": "4",
+        "loads": {
+            "G": "1",
+            "L": "2"
+        },
+        "stores": {
+            "L": "4"
+        },
+        "loops": {
+            "L": "1"
+        }
+    },
+    "18": {
+        "name": "ecg_classify_trained_Pipeline_VITIS_LOOP_41_23",
+        "file": "hls_source\/ecg_trained_classifier.cpp",
+        "fileloc": "39",
+        "instructions": "85",
+        "total_instructions": "85",
+        "calls": "",
+        "basicblocks": "6",
+        "loads": {
+            "G": "1",
+            "L": "3"
+        },
+        "stores": {
+            "L": "6"
+        },
+        "loops": {
+            "L": "1"
+        }
+    },
+    "19": {
+        "name": "ecg_classify_trained_Pipeline_VITIS_LOOP_57_4",
+        "file": "hls_source\/ecg_trained_classifier.cpp",
+        "fileloc": "55",
+        "instructions": "198",
+        "total_instructions": "198",
+        "calls": "",
+        "basicblocks": "4",
+        "loads": {
+            "G": "1",
+            "L": "2"
+        },
+        "stores": {
+            "L": "4"
+        },
+        "loops": {
+            "L": "1"
+        }
+    }
+}

@@ -1,0 +1,58 @@
+#-----------------------------------------------------------
+# Vivado v2024.1.2 (64-bit)
+# SW Build 5164865 on Thu Sep  5 14:37:11 MDT 2024
+# IP Build 5164407 on Fri Sep  6 08:18:11 MDT 2024
+# SharedData Build 5164864 on Thu Sep 05 13:09:09 MDT 2024
+# Start of session at: Wed Jul 16 22:39:02 2025
+# Process ID: 27724
+# Current directory: D:/Git/Project/FPGA/ecg_fpga_project/solution1/impl/ip
+# Command line: vivado.exe -notrace -mode batch -source run_ippack.tcl
+# Log file: D:/Git/Project/FPGA/ecg_fpga_project/solution1/impl/ip/vivado.log
+# Journal file: D:/Git/Project/FPGA/ecg_fpga_project/solution1/impl/ip\vivado.jou
+# Running On        :ËïÈð²©
+# Platform          :Windows Server 2016 or Windows 10
+# Operating System  :26100
+# Processor Detail  :13th Gen Intel(R) Core(TM) i9-13900HX
+# CPU Frequency     :2419 MHz
+# CPU Physical cores:24
+# CPU Logical cores :32
+# Host memory       :16978 MB
+# Swap memory       :31138 MB
+# Total Virtual     :48116 MB
+# Available Virtual :16355 MB
+#-----------------------------------------------------------
+source run_ippack.tcl -notrace
+INFO: calling package_hls_ip ip_types=vitis sysgen json_file=D:/Git/Project/FPGA/ecg_fpga_project/solution1/solution1_data.json outdir=D:/Git/Project/FPGA/ecg_fpga_project/solution1/impl/ip srcdir=D:/Git/Project/FPGA/ecg_fpga_project/solution1 sort_interfaces_ports=false
+INFO: Copied 1 ipmisc file(s) to D:/Git/Project/FPGA/ecg_fpga_project/solution1/impl/ip/misc
+INFO: Copied 45 verilog file(s) to D:/Git/Project/FPGA/ecg_fpga_project/solution1/impl/ip/hdl/verilog
+INFO: Copied 38 vhdl file(s) to D:/Git/Project/FPGA/ecg_fpga_project/solution1/impl/ip/hdl/vhdl
+INFO: Copied 10 swdriver file(s) to D:/Git/Project/FPGA/ecg_fpga_project/solution1/impl/ip/drivers
+Generating 1 subcores in D:/Git/Project/FPGA/ecg_fpga_project/solution1/impl/ip/hdl/ip.tmp:
+impl/misc/ecg_classify_trained_fpext_32ns_64_2_no_dsp_1_ip.tcl
+create_project: Time (s): cpu = 00:00:05 ; elapsed = 00:00:07 . Memory (MB): peak = 536.656 ; gain = 136.688
+INFO: Using COE_DIR=D:/Git/Project/FPGA/ecg_fpga_project/solution1/impl/ip/hdl/verilog
+INFO: Generating ecg_classify_trained_fpext_32ns_64_2_no_dsp_1_ip via file impl/misc/ecg_classify_trained_fpext_32ns_64_2_no_dsp_1_ip.tcl
+INFO: [IP_Flow 19-234] Refreshing IP repositories
+INFO: [IP_Flow 19-1704] No user IP repositories specified
+INFO: [IP_Flow 19-2313] Loaded Vivado IP repository 'D:/Xilinx/Vivado/2024.1/data/ip'.
+WARNING: [IP_Flow 19-4832] The IP name 'ecg_classify_trained_fpext_32ns_64_2_no_dsp_1_ip' you have specified is long. The Windows operating system has path length limitations. It is recommended you use shorter names to reduce the likelihood of issues.
+INFO: [IP_Flow 19-1686] Generating 'Synthesis' target for IP 'ecg_classify_trained_fpext_32ns_64_2_no_dsp_1_ip'...
+INFO: [IP_Flow 19-1686] Generating 'Simulation' target for IP 'ecg_classify_trained_fpext_32ns_64_2_no_dsp_1_ip'...
+INFO: Done generating ecg_classify_trained_fpext_32ns_64_2_no_dsp_1_ip via file impl/misc/ecg_classify_trained_fpext_32ns_64_2_no_dsp_1_ip.tcl
+INFO: Import ports from HDL: D:/Git/Project/FPGA/ecg_fpga_project/solution1/impl/ip/hdl/vhdl/ecg_classify_trained.vhd (ecg_classify_trained)
+INFO: Add axi4lite interface s_axi_control
+INFO: Add clock interface ap_clk
+INFO: Add reset interface ap_rst_n
+INFO: Add interrupt interface interrupt
+INFO: [IP_Flow 19-234] Refreshing IP repositories
+INFO: [IP_Flow 19-1704] No user IP repositories specified
+INFO: [IP_Flow 19-2313] Loaded Vivado IP repository 'D:/Xilinx/Vivado/2024.1/data/ip'.
+INFO: Add axi4full interface m_axi_gmem0
+INFO: Add axi4full interface m_axi_gmem1
+INFO: Add axi4full interface m_axi_gmem2
+INFO: Calling post_process_vitis to specialize IP
+INFO: Calling post_process_sysgen to specialize IP
+Generating sysgen info xml from json file
+INFO: Created IP D:/Git/Project/FPGA/ecg_fpga_project/solution1/impl/ip/component.xml
+INFO: Created IP archive D:/Git/Project/FPGA/ecg_fpga_project/solution1/impl/ip/xilinx_com_hls_ecg_classify_trained_1_0.zip
+INFO: [Common 17-206] Exiting Vivado at Wed Jul 16 22:39:17 2025...

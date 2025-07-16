@@ -1,0 +1,283 @@
+
+
+================================================================
+== Vitis HLS Report for 'ecg_classify_trained_Pipeline_VITIS_LOOP_73_69'
+================================================================
+* Date:           Wed Jul 16 22:38:46 2025
+
+* Version:        2024.1.2 (Build 5096458 on Sep  5 2024)
+* Project:        ecg_fpga_project
+* Solution:       solution1 (Vivado IP Flow Target)
+* Product family: zynq
+* Target device:  xc7z020-clg400-1
+
+
+================================================================
+== Performance Estimates
+================================================================
++ Timing: 
+    * Summary: 
+    +--------+----------+----------+------------+
+    |  Clock |  Target  | Estimated| Uncertainty|
+    +--------+----------+----------+------------+
+    |ap_clk  |  10.00 ns|  5.748 ns|     2.70 ns|
+    +--------+----------+----------+------------+
+
++ Latency: 
+    * Summary: 
+    +---------+---------+----------+----------+-----+-----+-----------------------------------------------+
+    |  Latency (cycles) |  Latency (absolute) |  Interval |                    Pipeline                   |
+    |   min   |   max   |    min   |    max   | min | max |                      Type                     |
+    +---------+---------+----------+----------+-----+-----+-----------------------------------------------+
+    |       74|       74|  0.740 us|  0.740 us|   65|   65|  loop auto-rewind stp(delay=0 clock cycles(s))|
+    +---------+---------+----------+----------+-----+-----+-----------------------------------------------+
+
+    + Detail: 
+        * Instance: 
+        N/A
+
+        * Loop: 
+        +-------------------+---------+---------+----------+-----------+-----------+------+----------+
+        |                   |  Latency (cycles) | Iteration|  Initiation Interval  | Trip |          |
+        |     Loop Name     |   min   |   max   |  Latency |  achieved |   target  | Count| Pipelined|
+        +-------------------+---------+---------+----------+-----------+-----------+------+----------+
+        |- VITIS_LOOP_73_6  |       72|       72|        10|          1|          1|    64|       yes|
+        +-------------------+---------+---------+----------+-----------+-----------+------+----------+
+
+
+
+================================================================
+== Utilization Estimates
+================================================================
+* Summary: 
++-----------------+---------+-----+--------+-------+-----+
+|       Name      | BRAM_18K| DSP |   FF   |  LUT  | URAM|
++-----------------+---------+-----+--------+-------+-----+
+|DSP              |        -|    1|       -|      -|    -|
+|Expression       |        -|    -|       0|    553|    -|
+|FIFO             |        -|    -|       -|      -|    -|
+|Instance         |        -|    -|       0|    287|    -|
+|Memory           |        -|    -|       -|      -|    -|
+|Multiplexer      |        -|    -|       0|     54|    -|
+|Register         |        -|    -|     499|     64|    -|
++-----------------+---------+-----+--------+-------+-----+
+|Total            |        0|    1|     499|    958|    0|
++-----------------+---------+-----+--------+-------+-----+
+|Available        |      280|  220|  106400|  53200|    0|
++-----------------+---------+-----+--------+-------+-----+
+|Utilization (%)  |        0|   ~0|      ~0|      1|    0|
++-----------------+---------+-----+--------+-------+-----+
+
++ Detail: 
+    * Instance: 
+    +-----------------------------+------------------------+---------+----+---+-----+-----+
+    |           Instance          |         Module         | BRAM_18K| DSP| FF| LUT | URAM|
+    +-----------------------------+------------------------+---------+----+---+-----+-----+
+    |sparsemux_129_6_16_1_1_U802  |sparsemux_129_6_16_1_1  |        0|   0|  0|  273|    0|
+    |sparsemux_9_3_16_1_1_U803    |sparsemux_9_3_16_1_1    |        0|   0|  0|   14|    0|
+    +-----------------------------+------------------------+---------+----+---+-----+-----+
+    |Total                        |                        |        0|   0|  0|  287|    0|
+    +-----------------------------+------------------------+---------+----+---+-----+-----+
+
+    * DSP: 
+    +-------------------------------------+--------------------------------+--------------+
+    |               Instance              |             Module             |  Expression  |
+    +-------------------------------------+--------------------------------+--------------+
+    |mac_muladd_16s_16s_32ns_32_4_1_U804  |mac_muladd_16s_16s_32ns_32_4_1  |  i0 * i1 + i2|
+    +-------------------------------------+--------------------------------+--------------+
+
+    * Memory: 
+    N/A
+
+    * FIFO: 
+    N/A
+
+    * Expression: 
+    +--------------------------+----------+----+---+-----+------------+------------+
+    |       Variable Name      | Operation| DSP| FF| LUT | Bitwidth P0| Bitwidth P1|
+    +--------------------------+----------+----+---+-----+------------+------------+
+    |add_ln73_fu_806_p2        |         +|   0|  0|   14|           7|           1|
+    |add_ln75_fu_1178_p2       |         +|   0|  0|   12|          11|           5|
+    |sub_ln75_1_fu_1162_p2     |         -|   0|  0|   12|          11|          12|
+    |sub_ln75_2_fu_1184_p2     |         -|   0|  0|   12|           4|          11|
+    |sub_ln75_fu_1144_p2       |         -|   0|  0|   61|           1|          54|
+    |and_ln75_1_fu_1291_p2     |       and|   0|  0|    2|           1|           1|
+    |and_ln75_fu_1276_p2       |       and|   0|  0|    2|           1|           1|
+    |ashr_ln75_fu_1232_p2      |      ashr|   0|  0|  161|          54|          54|
+    |icmp_ln73_fu_800_p2       |      icmp|   0|  0|   15|           7|           8|
+    |icmp_ln75_1_fu_1172_p2    |      icmp|   0|  0|   12|          12|           4|
+    |icmp_ln75_2_fu_1198_p2    |      icmp|   0|  0|   12|          12|           4|
+    |icmp_ln75_3_fu_1224_p2    |      icmp|   0|  0|   12|          11|           6|
+    |icmp_ln75_4_fu_1218_p2    |      icmp|   0|  0|   14|           7|           1|
+    |icmp_ln75_fu_1157_p2      |      icmp|   0|  0|   70|          63|           1|
+    |or_ln75_fu_1281_p2        |        or|   0|  0|    2|           1|           1|
+    |select_ln75_1_fu_1190_p3  |    select|   0|  0|   11|           1|          11|
+    |select_ln75_2_fu_1241_p3  |    select|   0|  0|    2|           1|           2|
+    |select_ln75_3_fu_1248_p3  |    select|   0|  0|   16|           1|          16|
+    |select_ln75_4_fu_1264_p3  |    select|   0|  0|   16|           1|          16|
+    |select_ln75_fu_1150_p3    |    select|   0|  0|   54|           1|          54|
+    |shl_ln75_fu_1259_p2       |       shl|   0|  0|   35|          16|          16|
+    |ap_enable_pp0             |       xor|   0|  0|    2|           1|           2|
+    |xor_ln75_1_fu_1285_p2     |       xor|   0|  0|    2|           1|           2|
+    |xor_ln75_fu_1271_p2       |       xor|   0|  0|    2|           1|           2|
+    +--------------------------+----------+----+---+-----+------------+------------+
+    |Total                     |          |   0|  0|  553|         227|         285|
+    +--------------------------+----------+----+---+-----+------------+------------+
+
+    * Multiplexer: 
+    +-------------------------+----+-----------+-----+-----------+
+    |           Name          | LUT| Input Size| Bits| Total Bits|
+    +-------------------------+----+-----------+-----+-----------+
+    |ap_done_int              |   9|          2|    1|          2|
+    |ap_enable_reg_pp0_iter9  |   9|          2|    1|          2|
+    |ap_sig_allocacmp_j_5     |   9|          2|    7|         14|
+    |ap_sig_allocacmp_sum_12  |   9|          2|   32|         64|
+    |j_fu_360                 |   9|          2|    7|         14|
+    |sum_fu_356               |   9|          2|   32|         64|
+    +-------------------------+----+-----------+-----+-----------+
+    |Total                    |  54|         12|   80|        160|
+    +-------------------------+----+-----------+-----+-----------+
+
+    * Register: 
+    +-------------------------------------+----+----+-----+-----------+
+    |                 Name                | FF | LUT| Bits| Const Bits|
+    +-------------------------------------+----+----+-----+-----------+
+    |ap_CS_fsm                            |   1|   0|    1|          0|
+    |ap_done_reg                          |   1|   0|    1|          0|
+    |ap_enable_reg_pp0_iter1              |   1|   0|    1|          0|
+    |ap_enable_reg_pp0_iter2              |   1|   0|    1|          0|
+    |ap_enable_reg_pp0_iter3              |   1|   0|    1|          0|
+    |ap_enable_reg_pp0_iter4              |   1|   0|    1|          0|
+    |ap_enable_reg_pp0_iter5              |   1|   0|    1|          0|
+    |ap_enable_reg_pp0_iter6              |   1|   0|    1|          0|
+    |ap_enable_reg_pp0_iter7              |   1|   0|    1|          0|
+    |ap_enable_reg_pp0_iter8              |   1|   0|    1|          0|
+    |ap_enable_reg_pp0_iter9              |   1|   0|    1|          0|
+    |ap_loop_exit_ready_pp0_iter1_reg     |   1|   0|    1|          0|
+    |ap_loop_exit_ready_pp0_iter2_reg     |   1|   0|    1|          0|
+    |ap_loop_exit_ready_pp0_iter3_reg     |   1|   0|    1|          0|
+    |ap_loop_exit_ready_pp0_iter4_reg     |   1|   0|    1|          0|
+    |ap_loop_exit_ready_pp0_iter5_reg     |   1|   0|    1|          0|
+    |ap_loop_exit_ready_pp0_iter6_reg     |   1|   0|    1|          0|
+    |ap_loop_exit_ready_pp0_iter7_reg     |   1|   0|    1|          0|
+    |ap_loop_exit_ready_pp0_iter8_reg     |   1|   0|    1|          0|
+    |dense_2_weights_load_reg_1382        |  32|   0|   32|          0|
+    |icmp_ln73_reg_1368                   |   1|   0|    1|          0|
+    |icmp_ln75_1_reg_1420                 |   1|   0|    1|          0|
+    |icmp_ln75_1_reg_1420_pp0_iter5_reg   |   1|   0|    1|          0|
+    |icmp_ln75_2_reg_1432                 |   1|   0|    1|          0|
+    |icmp_ln75_2_reg_1432_pp0_iter5_reg   |   1|   0|    1|          0|
+    |icmp_ln75_4_reg_1444                 |   1|   0|    1|          0|
+    |icmp_ln75_reg_1413                   |   1|   0|    1|          0|
+    |icmp_ln75_reg_1413_pp0_iter5_reg     |   1|   0|    1|          0|
+    |j_fu_360                             |   7|   0|    7|          0|
+    |select_ln75_1_reg_1425               |  11|   0|   11|          0|
+    |select_ln75_3_reg_1449               |  16|   0|   16|          0|
+    |select_ln75_4_reg_1454               |  16|   0|   16|          0|
+    |select_ln75_reg_1408                 |  54|   0|   54|          0|
+    |sum_fu_356                           |  32|   0|   32|          0|
+    |tmp_15_reg_1377                      |  16|   0|   16|          0|
+    |tmp_reg_1392                         |   1|   0|    1|          0|
+    |tmp_reg_1392_pp0_iter4_reg           |   1|   0|    1|          0|
+    |tmp_s_reg_1398                       |  11|   0|   11|          0|
+    |trunc_ln75_1_reg_1403                |  52|   0|   52|          0|
+    |trunc_ln75_3_reg_1438                |  16|   0|   16|          0|
+    |trunc_ln75_3_reg_1438_pp0_iter5_reg  |  16|   0|   16|          0|
+    |trunc_ln75_reg_1387                  |  63|   0|   63|          0|
+    |icmp_ln73_reg_1368                   |  64|  32|    1|          0|
+    |tmp_15_reg_1377                      |  64|  32|   16|          0|
+    +-------------------------------------+----+----+-----+-----------+
+    |Total                                | 499|  64|  388|          0|
+    +-------------------------------------+----+----+-----+-----------+
+
+
+
+================================================================
+== Interface
+================================================================
+* Summary: 
++--------------------------+-----+-----+------------+------------------------------------------------+--------------+
+|         RTL Ports        | Dir | Bits|  Protocol  |                  Source Object                 |    C Type    |
++--------------------------+-----+-----+------------+------------------------------------------------+--------------+
+|ap_clk                    |   in|    1|  ap_ctrl_hs|  ecg_classify_trained_Pipeline_VITIS_LOOP_73_69|  return value|
+|ap_rst                    |   in|    1|  ap_ctrl_hs|  ecg_classify_trained_Pipeline_VITIS_LOOP_73_69|  return value|
+|ap_start                  |   in|    1|  ap_ctrl_hs|  ecg_classify_trained_Pipeline_VITIS_LOOP_73_69|  return value|
+|ap_done                   |  out|    1|  ap_ctrl_hs|  ecg_classify_trained_Pipeline_VITIS_LOOP_73_69|  return value|
+|ap_idle                   |  out|    1|  ap_ctrl_hs|  ecg_classify_trained_Pipeline_VITIS_LOOP_73_69|  return value|
+|ap_ready                  |  out|    1|  ap_ctrl_hs|  ecg_classify_trained_Pipeline_VITIS_LOOP_73_69|  return value|
+|grp_fu_13213_p_din0       |  out|   32|  ap_ctrl_hs|  ecg_classify_trained_Pipeline_VITIS_LOOP_73_69|  return value|
+|grp_fu_13213_p_dout0      |   in|   64|  ap_ctrl_hs|  ecg_classify_trained_Pipeline_VITIS_LOOP_73_69|  return value|
+|grp_fu_13213_p_ce         |  out|    1|  ap_ctrl_hs|  ecg_classify_trained_Pipeline_VITIS_LOOP_73_69|  return value|
+|sext_ln71_11              |   in|   24|     ap_none|                                    sext_ln71_11|        scalar|
+|tmp_114                   |   in|    3|     ap_none|                                         tmp_114|        scalar|
+|hidden2                   |   in|   16|     ap_none|                                         hidden2|        scalar|
+|hidden2_1                 |   in|   16|     ap_none|                                       hidden2_1|        scalar|
+|hidden2_2                 |   in|   16|     ap_none|                                       hidden2_2|        scalar|
+|hidden2_3                 |   in|   16|     ap_none|                                       hidden2_3|        scalar|
+|hidden2_4                 |   in|   16|     ap_none|                                       hidden2_4|        scalar|
+|hidden2_5                 |   in|   16|     ap_none|                                       hidden2_5|        scalar|
+|hidden2_6                 |   in|   16|     ap_none|                                       hidden2_6|        scalar|
+|hidden2_7                 |   in|   16|     ap_none|                                       hidden2_7|        scalar|
+|hidden2_8                 |   in|   16|     ap_none|                                       hidden2_8|        scalar|
+|hidden2_9                 |   in|   16|     ap_none|                                       hidden2_9|        scalar|
+|hidden2_10                |   in|   16|     ap_none|                                      hidden2_10|        scalar|
+|hidden2_11                |   in|   16|     ap_none|                                      hidden2_11|        scalar|
+|hidden2_12                |   in|   16|     ap_none|                                      hidden2_12|        scalar|
+|hidden2_13                |   in|   16|     ap_none|                                      hidden2_13|        scalar|
+|hidden2_14                |   in|   16|     ap_none|                                      hidden2_14|        scalar|
+|hidden2_15                |   in|   16|     ap_none|                                      hidden2_15|        scalar|
+|hidden2_16                |   in|   16|     ap_none|                                      hidden2_16|        scalar|
+|hidden2_17                |   in|   16|     ap_none|                                      hidden2_17|        scalar|
+|hidden2_18                |   in|   16|     ap_none|                                      hidden2_18|        scalar|
+|hidden2_19                |   in|   16|     ap_none|                                      hidden2_19|        scalar|
+|hidden2_20                |   in|   16|     ap_none|                                      hidden2_20|        scalar|
+|hidden2_21                |   in|   16|     ap_none|                                      hidden2_21|        scalar|
+|hidden2_22                |   in|   16|     ap_none|                                      hidden2_22|        scalar|
+|hidden2_23                |   in|   16|     ap_none|                                      hidden2_23|        scalar|
+|hidden2_24                |   in|   16|     ap_none|                                      hidden2_24|        scalar|
+|hidden2_25                |   in|   16|     ap_none|                                      hidden2_25|        scalar|
+|hidden2_26                |   in|   16|     ap_none|                                      hidden2_26|        scalar|
+|hidden2_27                |   in|   16|     ap_none|                                      hidden2_27|        scalar|
+|hidden2_28                |   in|   16|     ap_none|                                      hidden2_28|        scalar|
+|hidden2_29                |   in|   16|     ap_none|                                      hidden2_29|        scalar|
+|hidden2_30                |   in|   16|     ap_none|                                      hidden2_30|        scalar|
+|hidden2_31                |   in|   16|     ap_none|                                      hidden2_31|        scalar|
+|hidden2_32                |   in|   16|     ap_none|                                      hidden2_32|        scalar|
+|hidden2_33                |   in|   16|     ap_none|                                      hidden2_33|        scalar|
+|hidden2_34                |   in|   16|     ap_none|                                      hidden2_34|        scalar|
+|hidden2_35                |   in|   16|     ap_none|                                      hidden2_35|        scalar|
+|hidden2_36                |   in|   16|     ap_none|                                      hidden2_36|        scalar|
+|hidden2_37                |   in|   16|     ap_none|                                      hidden2_37|        scalar|
+|hidden2_38                |   in|   16|     ap_none|                                      hidden2_38|        scalar|
+|hidden2_39                |   in|   16|     ap_none|                                      hidden2_39|        scalar|
+|hidden2_40                |   in|   16|     ap_none|                                      hidden2_40|        scalar|
+|hidden2_41                |   in|   16|     ap_none|                                      hidden2_41|        scalar|
+|hidden2_42                |   in|   16|     ap_none|                                      hidden2_42|        scalar|
+|hidden2_43                |   in|   16|     ap_none|                                      hidden2_43|        scalar|
+|hidden2_44                |   in|   16|     ap_none|                                      hidden2_44|        scalar|
+|hidden2_45                |   in|   16|     ap_none|                                      hidden2_45|        scalar|
+|hidden2_46                |   in|   16|     ap_none|                                      hidden2_46|        scalar|
+|hidden2_47                |   in|   16|     ap_none|                                      hidden2_47|        scalar|
+|hidden2_48                |   in|   16|     ap_none|                                      hidden2_48|        scalar|
+|hidden2_49                |   in|   16|     ap_none|                                      hidden2_49|        scalar|
+|hidden2_50                |   in|   16|     ap_none|                                      hidden2_50|        scalar|
+|hidden2_51                |   in|   16|     ap_none|                                      hidden2_51|        scalar|
+|hidden2_52                |   in|   16|     ap_none|                                      hidden2_52|        scalar|
+|hidden2_53                |   in|   16|     ap_none|                                      hidden2_53|        scalar|
+|hidden2_54                |   in|   16|     ap_none|                                      hidden2_54|        scalar|
+|hidden2_55                |   in|   16|     ap_none|                                      hidden2_55|        scalar|
+|hidden2_56                |   in|   16|     ap_none|                                      hidden2_56|        scalar|
+|hidden2_57                |   in|   16|     ap_none|                                      hidden2_57|        scalar|
+|hidden2_58                |   in|   16|     ap_none|                                      hidden2_58|        scalar|
+|hidden2_59                |   in|   16|     ap_none|                                      hidden2_59|        scalar|
+|hidden2_60                |   in|   16|     ap_none|                                      hidden2_60|        scalar|
+|hidden2_61                |   in|   16|     ap_none|                                      hidden2_61|        scalar|
+|hidden2_62                |   in|   16|     ap_none|                                      hidden2_62|        scalar|
+|hidden2_63                |   in|   16|     ap_none|                                      hidden2_63|        scalar|
+|sum_40_out                |  out|   24|      ap_vld|                                      sum_40_out|       pointer|
+|sum_40_out_ap_vld         |  out|    1|      ap_vld|                                      sum_40_out|       pointer|
+|dense_2_weights_address0  |  out|   11|   ap_memory|                                 dense_2_weights|         array|
+|dense_2_weights_ce0       |  out|    1|   ap_memory|                                 dense_2_weights|         array|
+|dense_2_weights_q0        |   in|   32|   ap_memory|                                 dense_2_weights|         array|
++--------------------------+-----+-----+------------+------------------------------------------------+--------------+
+

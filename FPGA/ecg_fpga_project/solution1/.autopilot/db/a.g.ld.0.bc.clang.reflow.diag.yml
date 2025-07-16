@@ -1,0 +1,897 @@
+--- !Failure
+Pass:            generate-ir-wrapper
+Name:            MAXIDepthUnspecified
+DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 27, 
+                   Column: 0 }
+Function:        _Z20ecg_classify_trainedP8ap_fixedILi16ELi8EL9ap_q_mode5EL9ap_o_mode3ELi0EES3_Pi
+Args:            
+  - String:          'A depth specification is required for MAXI interface port '''
+  - Name:            predicted_class
+  - String:          ''' for cosimulation.'
+...
+--- !Passed
+Pass:            reflow-pragma-loop-unroll
+Name:            PragmaFullyUnroll
+DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 27, 
+                   Column: 0 }
+Function:        _Z20ecg_classify_trainedP8ap_fixedILi16ELi8EL9ap_q_mode5EL9ap_o_mode3ELi0EES3_Pi
+Args:            
+  - String:          'Unrolling loop '''
+  - LoopName:        VITIS_LOOP_84_7
+  - String:          ''' ('
+  - LoopLoc:         'hls_source/ecg_trained_classifier.cpp:84:22'
+  - String:          ') '
+  - String:          'in function '''
+  - String:          ecg_classify_trained
+  - String:          ''' completely with a factor of '
+  - Factor:          '6'
+...
+--- !Passed
+Pass:            reflow-pragma-loop-unroll
+Name:            PragmaPartiallyUnroll
+DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 27, 
+                   Column: 0 }
+Function:        _Z20ecg_classify_trainedP8ap_fixedILi16ELi8EL9ap_q_mode5EL9ap_o_mode3ELi0EES3_Pi
+Args:            
+  - String:          'Unrolling loop '''
+  - LoopName:        VITIS_LOOP_69_5
+  - String:          ''' ('
+  - LoopLoc:         'hls_source/ecg_trained_classifier.cpp:69:19'
+  - String:          ') '
+  - String:          'in function '''
+  - String:          ecg_classify_trained
+  - String:          ''' partially '
+  - String:          ''
+  - String:          'with a factor of '
+  - Factor:          '4'
+...
+--- !Passed
+Pass:            reflow-pragma-loop-unroll
+Name:            PragmaPartiallyUnroll
+DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 27, 
+                   Column: 0 }
+Function:        _Z20ecg_classify_trainedP8ap_fixedILi16ELi8EL9ap_q_mode5EL9ap_o_mode3ELi0EES3_Pi
+Args:            
+  - String:          'Unrolling loop '''
+  - LoopName:        VITIS_LOOP_53_3
+  - String:          ''' ('
+  - LoopLoc:         'hls_source/ecg_trained_classifier.cpp:53:19'
+  - String:          ') '
+  - String:          'in function '''
+  - String:          ecg_classify_trained
+  - String:          ''' partially '
+  - String:          ''
+  - String:          'with a factor of '
+  - Factor:          '4'
+...
+--- !Passed
+Pass:            reflow-pragma-loop-unroll
+Name:            PragmaPartiallyUnroll
+DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 27, 
+                   Column: 0 }
+Function:        _Z20ecg_classify_trainedP8ap_fixedILi16ELi8EL9ap_q_mode5EL9ap_o_mode3ELi0EES3_Pi
+Args:            
+  - String:          'Unrolling loop '''
+  - LoopName:        VITIS_LOOP_37_1
+  - String:          ''' ('
+  - LoopLoc:         'hls_source/ecg_trained_classifier.cpp:37:19'
+  - String:          ') '
+  - String:          'in function '''
+  - String:          ecg_classify_trained
+  - String:          ''' partially '
+  - String:          ''
+  - String:          'with a factor of '
+  - Factor:          '4'
+...
+--- !Passed
+Pass:            reflow-inliner
+Name:            Inline
+DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 27, 
+                   Column: 0 }
+Function:        _Z20ecg_classify_trainedP8ap_fixedILi16ELi8EL9ap_q_mode5EL9ap_o_mode3ELi0EES3_Pi
+Args:            
+  - String:          'Inlining function '''
+  - Callee:          'relu(ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>)'
+    DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 18, 
+                       Column: 0 }
+  - String:          ''' into '''
+  - Caller:          'ecg_classify_trained(ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, int*)'
+    DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 27, 
+                       Column: 0 }
+  - String:          ''''
+...
+--- !Passed
+Pass:            reflow-array-partition
+Name:            ArrayXform
+DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 34, 
+                   Column: 10 }
+Function:        _Z20ecg_classify_trainedP8ap_fixedILi16ELi8EL9ap_q_mode5EL9ap_o_mode3ELi0EES3_Pi
+Args:            
+  - String:          'Applying '
+  - String:          array_partition
+  - String:          ' to '''
+  - UOName:          hidden1
+  - String:          ''':'
+  - String:          ' '
+  - Mode:            Complete
+  - String:          ' partitioning'
+  - String:          ' on dimension '
+  - Dim:             '1'
+  - String:          .
+...
+--- !Passed
+Pass:            reflow-array-partition
+Name:            ArrayXform
+DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 50, 
+                   Column: 13 }
+Function:        _Z20ecg_classify_trainedP8ap_fixedILi16ELi8EL9ap_q_mode5EL9ap_o_mode3ELi0EES3_Pi
+Args:            
+  - String:          'Applying '
+  - String:          array_partition
+  - String:          ' to '''
+  - UOName:          hidden2
+  - String:          ''':'
+  - String:          ' '
+  - Mode:            Complete
+  - String:          ' partitioning'
+  - String:          ' on dimension '
+  - Dim:             '1'
+  - String:          .
+...
+--- !Passed
+Pass:            reflow-array-partition
+Name:            ArrayXform
+DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 66, 
+                   Column: 13 }
+Function:        _Z20ecg_classify_trainedP8ap_fixedILi16ELi8EL9ap_q_mode5EL9ap_o_mode3ELi0EES3_Pi
+Args:            
+  - String:          'Applying '
+  - String:          array_partition
+  - String:          ' to '''
+  - UOName:          hidden3
+  - String:          ''':'
+  - String:          ' '
+  - Mode:            Complete
+  - String:          ' partitioning'
+  - String:          ' on dimension '
+  - Dim:             '1'
+  - String:          .
+...
+--- !Passed
+Pass:            reflow-burst-inference
+Name:            BurstInferred
+DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 41, 
+                   Column: 26 }
+Function:        _Z20ecg_classify_trainedP8ap_fixedILi16ELi8EL9ap_q_mode5EL9ap_o_mode3ELi0EES3_Pi
+Args:            
+  - String:          'Sequential '
+  - Direction:       read
+  - String:          ' of length '
+  - Length:          '46'
+  - String:          ' has been inferred'
+  - String:          ' _XLX_SEP_ '
+  - AccessID:        features862seq
+  - ArrayName:       features
+  - String:          ' '
+  - BundleName:      gmem0
+  - String:          ' '
+  - LoopName:        VITIS_LOOP_41_2
+  - String:          ' '
+  - LoopLoc:         'hls_source/ecg_trained_classifier.cpp:41:26'
+  - String:          ' '
+  - Function:        'ecg_classify_trained(ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, int*)'
+    DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 27, 
+                       Column: 0 }
+  - String:          ' '
+  - String:          ' _XLX_SEP_ '
+  - OrigAccess:      load
+    DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 43, 
+                       Column: 21 }
+  - OrigDirection:   read
+  - OrigID:          _ZN13ap_fixed_baseILi16ELi8ELb1EL9ap_q_mode5EL9ap_o_mode3ELi0EEC2Ed.exit178.load.3
+...
+--- !Passed
+Pass:            reflow-burst-inference
+Name:            BurstInferred
+DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 41, 
+                   Column: 26 }
+Function:        _Z20ecg_classify_trainedP8ap_fixedILi16ELi8EL9ap_q_mode5EL9ap_o_mode3ELi0EES3_Pi
+Args:            
+  - String:          'Sequential '
+  - Direction:       read
+  - String:          ' of length '
+  - Length:          '46'
+  - String:          ' has been inferred'
+  - String:          ' _XLX_SEP_ '
+  - AccessID:        features862seq863
+  - ArrayName:       features
+  - String:          ' '
+  - BundleName:      gmem0
+  - String:          ' '
+  - LoopName:        VITIS_LOOP_41_2
+  - String:          ' '
+  - LoopLoc:         'hls_source/ecg_trained_classifier.cpp:41:26'
+  - String:          ' '
+  - Function:        'ecg_classify_trained(ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, int*)'
+    DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 27, 
+                       Column: 0 }
+  - String:          ' '
+  - String:          ' _XLX_SEP_ '
+  - OrigAccess:      load
+    DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 43, 
+                       Column: 21 }
+  - OrigDirection:   read
+  - OrigID:          _ZN13ap_fixed_baseILi16ELi8ELb1EL9ap_q_mode5EL9ap_o_mode3ELi0EEC2Ed.exit1260.load.3
+...
+--- !Passed
+Pass:            reflow-burst-inference
+Name:            BurstInferred
+DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 41, 
+                   Column: 26 }
+Function:        _Z20ecg_classify_trainedP8ap_fixedILi16ELi8EL9ap_q_mode5EL9ap_o_mode3ELi0EES3_Pi
+Args:            
+  - String:          'Sequential '
+  - Direction:       read
+  - String:          ' of length '
+  - Length:          '46'
+  - String:          ' has been inferred'
+  - String:          ' _XLX_SEP_ '
+  - AccessID:        features862seq864
+  - ArrayName:       features
+  - String:          ' '
+  - BundleName:      gmem0
+  - String:          ' '
+  - LoopName:        VITIS_LOOP_41_2
+  - String:          ' '
+  - LoopLoc:         'hls_source/ecg_trained_classifier.cpp:41:26'
+  - String:          ' '
+  - Function:        'ecg_classify_trained(ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, int*)'
+    DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 27, 
+                       Column: 0 }
+  - String:          ' '
+  - String:          ' _XLX_SEP_ '
+  - OrigAccess:      load
+    DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 43, 
+                       Column: 21 }
+  - OrigDirection:   read
+  - OrigID:          _ZN13ap_fixed_baseILi16ELi8ELb1EL9ap_q_mode5EL9ap_o_mode3ELi0EEC2Ed.exit1348.load.3
+...
+--- !Passed
+Pass:            reflow-burst-inference
+Name:            BurstInferred
+DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 41, 
+                   Column: 26 }
+Function:        _Z20ecg_classify_trainedP8ap_fixedILi16ELi8EL9ap_q_mode5EL9ap_o_mode3ELi0EES3_Pi
+Args:            
+  - String:          'Sequential '
+  - Direction:       read
+  - String:          ' of length '
+  - Length:          '46'
+  - String:          ' has been inferred'
+  - String:          ' _XLX_SEP_ '
+  - AccessID:        features862seq865
+  - ArrayName:       features
+  - String:          ' '
+  - BundleName:      gmem0
+  - String:          ' '
+  - LoopName:        VITIS_LOOP_41_2
+  - String:          ' '
+  - LoopLoc:         'hls_source/ecg_trained_classifier.cpp:41:26'
+  - String:          ' '
+  - Function:        'ecg_classify_trained(ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, int*)'
+    DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 27, 
+                       Column: 0 }
+  - String:          ' '
+  - String:          ' _XLX_SEP_ '
+  - OrigAccess:      load
+    DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 43, 
+                       Column: 21 }
+  - OrigDirection:   read
+  - OrigID:          _ZN13ap_fixed_baseILi16ELi8ELb1EL9ap_q_mode5EL9ap_o_mode3ELi0EEC2Ed.exit1436.load.3
+...
+--- !Passed
+Pass:            reflow-burst-inference
+Name:            BurstInferred
+DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 101, 
+                   Column: 23 }
+Function:        _Z20ecg_classify_trainedP8ap_fixedILi16ELi8EL9ap_q_mode5EL9ap_o_mode3ELi0EES3_Pi
+Args:            
+  - String:          'Sequential '
+  - Direction:       read
+  - String:          ' of length '
+  - Length:          '5'
+  - String:          ' has been inferred'
+  - String:          ' _XLX_SEP_ '
+  - AccessID:        scevgepseq
+  - ArrayName:       probabilities
+  - String:          ' '
+  - BundleName:      gmem1
+  - String:          ' '
+  - LoopName:        VITIS_LOOP_101_9
+  - String:          ' '
+  - LoopLoc:         'hls_source/ecg_trained_classifier.cpp:101:23'
+  - String:          ' '
+  - Function:        'ecg_classify_trained(ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, int*)'
+    DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 27, 
+                       Column: 0 }
+  - String:          ' '
+  - String:          ' _XLX_SEP_ '
+  - OrigAccess:      load
+    DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 102, 
+                       Column: 29 }
+  - OrigDirection:   read
+  - OrigID:          for.body124.load.8
+...
+--- !Missed
+Pass:            reflow-burst-inference
+Name:            CouldNotAnalyzePattern
+DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 41, 
+                   Column: 26 }
+Function:        _Z20ecg_classify_trainedP8ap_fixedILi16ELi8EL9ap_q_mode5EL9ap_o_mode3ELi0EES3_Pi
+Args:            
+  - String:          Could not analyze pattern
+  - String:          ' _XLX_SEP_ '
+  - OrigAccess:      call
+    DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 41, 
+                       Column: 26 }
+  - OrigDirection:   read
+  - OrigID:          features862seq
+  - ArrayName:       features
+  - String:          ' '
+  - BundleName:      gmem0
+  - String:          ' '
+  - LoopName:        VITIS_LOOP_37_1
+  - String:          ' '
+  - LoopLoc:         'hls_source/ecg_trained_classifier.cpp:37:19'
+  - String:          ' '
+  - Function:        'ecg_classify_trained(ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, int*)'
+    DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 27, 
+                       Column: 0 }
+  - String:          ' '
+...
+--- !Missed
+Pass:            reflow-burst-inference
+Name:            CouldNotAnalyzePattern
+DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 41, 
+                   Column: 26 }
+Function:        _Z20ecg_classify_trainedP8ap_fixedILi16ELi8EL9ap_q_mode5EL9ap_o_mode3ELi0EES3_Pi
+Args:            
+  - String:          Could not analyze pattern
+  - String:          ' _XLX_SEP_ '
+  - OrigAccess:      call
+    DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 41, 
+                       Column: 26 }
+  - OrigDirection:   read
+  - OrigID:          features862seq863
+  - ArrayName:       features
+  - String:          ' '
+  - BundleName:      gmem0
+  - String:          ' '
+  - LoopName:        VITIS_LOOP_37_1
+  - String:          ' '
+  - LoopLoc:         'hls_source/ecg_trained_classifier.cpp:37:19'
+  - String:          ' '
+  - Function:        'ecg_classify_trained(ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, int*)'
+    DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 27, 
+                       Column: 0 }
+  - String:          ' '
+...
+--- !Missed
+Pass:            reflow-burst-inference
+Name:            CouldNotAnalyzePattern
+DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 41, 
+                   Column: 26 }
+Function:        _Z20ecg_classify_trainedP8ap_fixedILi16ELi8EL9ap_q_mode5EL9ap_o_mode3ELi0EES3_Pi
+Args:            
+  - String:          Could not analyze pattern
+  - String:          ' _XLX_SEP_ '
+  - OrigAccess:      call
+    DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 41, 
+                       Column: 26 }
+  - OrigDirection:   read
+  - OrigID:          features862seq864
+  - ArrayName:       features
+  - String:          ' '
+  - BundleName:      gmem0
+  - String:          ' '
+  - LoopName:        VITIS_LOOP_37_1
+  - String:          ' '
+  - LoopLoc:         'hls_source/ecg_trained_classifier.cpp:37:19'
+  - String:          ' '
+  - Function:        'ecg_classify_trained(ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, int*)'
+    DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 27, 
+                       Column: 0 }
+  - String:          ' '
+...
+--- !Missed
+Pass:            reflow-burst-inference
+Name:            CouldNotAnalyzePattern
+DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 41, 
+                   Column: 26 }
+Function:        _Z20ecg_classify_trainedP8ap_fixedILi16ELi8EL9ap_q_mode5EL9ap_o_mode3ELi0EES3_Pi
+Args:            
+  - String:          Could not analyze pattern
+  - String:          ' _XLX_SEP_ '
+  - OrigAccess:      call
+    DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 41, 
+                       Column: 26 }
+  - OrigDirection:   read
+  - OrigID:          features862seq865
+  - ArrayName:       features
+  - String:          ' '
+  - BundleName:      gmem0
+  - String:          ' '
+  - LoopName:        VITIS_LOOP_37_1
+  - String:          ' '
+  - LoopLoc:         'hls_source/ecg_trained_classifier.cpp:37:19'
+  - String:          ' '
+  - Function:        'ecg_classify_trained(ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, int*)'
+    DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 27, 
+                       Column: 0 }
+  - String:          ' '
+...
+--- !Missed
+Pass:            reflow-burst-widen
+Name:            GreaterOrEqualAlignment
+DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 101, 
+                   Column: 23 }
+Function:        _Z20ecg_classify_trainedP8ap_fixedILi16ELi8EL9ap_q_mode5EL9ap_o_mode3ELi0EES3_Pi
+Args:            
+  - String:          'Could not widen since type '
+  - Type:            i16
+  - String:          ' size is greater than or equal to alignment '
+  - Alignment:       '2'
+  - String:          '(bytes)'
+  - String:          ' _XLX_SEP_ '
+  - OrigAccess:      call
+    DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 101, 
+                       Column: 23 }
+  - OrigDirection:   read
+  - OrigID:          scevgepseq
+  - ArrayName:       probabilities
+  - String:          ' '
+  - BundleName:      gmem1
+  - String:          ' '
+  - LoopName:        VITIS_LOOP_101_9
+  - String:          ' '
+  - LoopLoc:         'hls_source/ecg_trained_classifier.cpp:101:23'
+  - String:          ' '
+  - Function:        'ecg_classify_trained(ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, int*)'
+    DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 27, 
+                       Column: 0 }
+  - String:          ' '
+...
+--- !Passed
+Pass:            reflow-burst-widen
+Name:            BurstWidened
+DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 41, 
+                   Column: 26 }
+Function:        _Z20ecg_classify_trainedP8ap_fixedILi16ELi8EL9ap_q_mode5EL9ap_o_mode3ELi0EES3_Pi
+Args:            
+  - String:          'Sequential '
+  - Direction:       read
+  - String:          ' of '
+  - OrigLength:      '46'
+  - String:          ' x '
+  - OrigWords:       '16'
+  - String:          'bit words has been widened by '
+  - Factor:          '2'
+  - String:          ': '
+  - Length:          '23'
+  - String:          ' x '
+  - Words:           '32'
+  - String:          bit words
+  - String:          ' _XLX_SEP_ '
+  - OrigAccess:      call
+    DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 41, 
+                       Column: 26 }
+  - OrigDirection:   read
+  - OrigID:          features862seq865
+  - String:          ' _XLX_SEP_ '
+  - AccessID:        wseq
+  - ArrayName:       features
+  - String:          ' '
+  - BundleName:      gmem0
+  - String:          ' '
+  - LoopName:        VITIS_LOOP_41_2
+  - String:          ' '
+  - LoopLoc:         'hls_source/ecg_trained_classifier.cpp:41:26'
+  - String:          ' '
+  - Function:        'ecg_classify_trained(ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, int*)'
+    DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 27, 
+                       Column: 0 }
+  - String:          ' '
+...
+--- !Passed
+Pass:            reflow-burst-widen
+Name:            BurstWidened
+DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 41, 
+                   Column: 26 }
+Function:        _Z20ecg_classify_trainedP8ap_fixedILi16ELi8EL9ap_q_mode5EL9ap_o_mode3ELi0EES3_Pi
+Args:            
+  - String:          'Sequential '
+  - Direction:       read
+  - String:          ' of '
+  - OrigLength:      '46'
+  - String:          ' x '
+  - OrigWords:       '16'
+  - String:          'bit words has been widened by '
+  - Factor:          '2'
+  - String:          ': '
+  - Length:          '23'
+  - String:          ' x '
+  - Words:           '32'
+  - String:          bit words
+  - String:          ' _XLX_SEP_ '
+  - OrigAccess:      call
+    DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 41, 
+                       Column: 26 }
+  - OrigDirection:   read
+  - OrigID:          features862seq864
+  - String:          ' _XLX_SEP_ '
+  - AccessID:        wseq866
+  - ArrayName:       features
+  - String:          ' '
+  - BundleName:      gmem0
+  - String:          ' '
+  - LoopName:        VITIS_LOOP_41_2
+  - String:          ' '
+  - LoopLoc:         'hls_source/ecg_trained_classifier.cpp:41:26'
+  - String:          ' '
+  - Function:        'ecg_classify_trained(ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, int*)'
+    DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 27, 
+                       Column: 0 }
+  - String:          ' '
+...
+--- !Passed
+Pass:            reflow-burst-widen
+Name:            BurstWidened
+DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 41, 
+                   Column: 26 }
+Function:        _Z20ecg_classify_trainedP8ap_fixedILi16ELi8EL9ap_q_mode5EL9ap_o_mode3ELi0EES3_Pi
+Args:            
+  - String:          'Sequential '
+  - Direction:       read
+  - String:          ' of '
+  - OrigLength:      '46'
+  - String:          ' x '
+  - OrigWords:       '16'
+  - String:          'bit words has been widened by '
+  - Factor:          '2'
+  - String:          ': '
+  - Length:          '23'
+  - String:          ' x '
+  - Words:           '32'
+  - String:          bit words
+  - String:          ' _XLX_SEP_ '
+  - OrigAccess:      call
+    DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 41, 
+                       Column: 26 }
+  - OrigDirection:   read
+  - OrigID:          features862seq863
+  - String:          ' _XLX_SEP_ '
+  - AccessID:        wseq868
+  - ArrayName:       features
+  - String:          ' '
+  - BundleName:      gmem0
+  - String:          ' '
+  - LoopName:        VITIS_LOOP_41_2
+  - String:          ' '
+  - LoopLoc:         'hls_source/ecg_trained_classifier.cpp:41:26'
+  - String:          ' '
+  - Function:        'ecg_classify_trained(ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, int*)'
+    DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 27, 
+                       Column: 0 }
+  - String:          ' '
+...
+--- !Passed
+Pass:            reflow-burst-widen
+Name:            BurstWidened
+DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 41, 
+                   Column: 26 }
+Function:        _Z20ecg_classify_trainedP8ap_fixedILi16ELi8EL9ap_q_mode5EL9ap_o_mode3ELi0EES3_Pi
+Args:            
+  - String:          'Sequential '
+  - Direction:       read
+  - String:          ' of '
+  - OrigLength:      '46'
+  - String:          ' x '
+  - OrigWords:       '16'
+  - String:          'bit words has been widened by '
+  - Factor:          '2'
+  - String:          ': '
+  - Length:          '23'
+  - String:          ' x '
+  - Words:           '32'
+  - String:          bit words
+  - String:          ' _XLX_SEP_ '
+  - OrigAccess:      call
+    DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 41, 
+                       Column: 26 }
+  - OrigDirection:   read
+  - OrigID:          features862seq
+  - String:          ' _XLX_SEP_ '
+  - AccessID:        wseq870
+  - ArrayName:       features
+  - String:          ' '
+  - BundleName:      gmem0
+  - String:          ' '
+  - LoopName:        VITIS_LOOP_41_2
+  - String:          ' '
+  - LoopLoc:         'hls_source/ecg_trained_classifier.cpp:41:26'
+  - String:          ' '
+  - Function:        'ecg_classify_trained(ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, int*)'
+    DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 27, 
+                       Column: 0 }
+  - String:          ' '
+...
+--- !Missed
+Pass:            reflow-burst-widen
+Name:            GreaterOrEqualAlignment
+DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 101, 
+                   Column: 23 }
+Function:        _Z20ecg_classify_trainedP8ap_fixedILi16ELi8EL9ap_q_mode5EL9ap_o_mode3ELi0EES3_Pi
+Args:            
+  - String:          'Could not widen since type '
+  - Type:            i16
+  - String:          ' size is greater than or equal to alignment '
+  - Alignment:       '2'
+  - String:          '(bytes)'
+  - String:          ' _XLX_SEP_ '
+  - OrigAccess:      call
+    DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 101, 
+                       Column: 23 }
+  - OrigDirection:   read
+  - OrigID:          scevgepseq
+  - ArrayName:       probabilities
+  - String:          ' '
+  - BundleName:      gmem1
+  - String:          ' '
+  - LoopName:        VITIS_LOOP_101_9
+  - String:          ' '
+  - LoopLoc:         'hls_source/ecg_trained_classifier.cpp:101:23'
+  - String:          ' '
+  - Function:        'ecg_classify_trained(ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, int*)'
+    DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 27, 
+                       Column: 0 }
+  - String:          ' '
+...
+--- !HLSReportInfo
+Pass:            auto-loop-pipeline
+Name:            AutoLoopPipeline
+Args:            
+  - String:          'automatically set the pipeline for Loop< '
+  - LoopName:        VITIS_LOOP_101_9
+  - String:          '> at '
+  - LoopLoc:         'hls_source/ecg_trained_classifier.cpp:101:23'
+  - String:          ' '
+...
+--- !Passed
+Pass:            reflow-burst-summary
+Name:            BurstInferredVerboseSummary
+DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 41, 
+                   Column: 26 }
+Function:        _Z20ecg_classify_trainedP8ap_fixedILi16ELi8EL9ap_q_mode5EL9ap_o_mode3ELi0EES3_Pi
+Args:            
+  - String:          'Multiple burst '
+  - Direction:       reads
+  - String:          ' of length '
+  - Length:          '23'
+  - String:          ' and bit width '
+  - Width:           '32'
+  - String:          ' has been inferred.'
+  - String:          ' These burst requests might be further partitioned into multiple requests during RTL generation, based on max_read_burst_length or max_write_burst_length settings.'
+  - String:          ' _XLX_SEP_ '
+  - AccessID:        seq
+  - ArrayName:       ''
+  - String:          ' '
+  - BundleName:      gmem0
+  - String:          ' '
+  - Function:        'ecg_classify_trained(ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, int*)'
+    DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 27, 
+                       Column: 0 }
+  - String:          ' '
+...
+--- !Passed
+Pass:            reflow-burst-summary
+Name:            BurstInferredSummary
+DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 41, 
+                   Column: 26 }
+Function:        _Z20ecg_classify_trainedP8ap_fixedILi16ELi8EL9ap_q_mode5EL9ap_o_mode3ELi0EES3_Pi
+Args:            
+  - String:          'Multiple burst '
+  - Direction:       reads
+  - String:          ' of length '
+  - Length:          '23'
+  - String:          ' and bit width '
+  - Width:           '32'
+  - String:          ' has been inferred on bundle '''
+  - BundleName:      gmem0
+  - String:          '''.'
+  - String:          ' These burst requests might be further partitioned into multiple requests during RTL generation, based on max_read_burst_length or max_write_burst_length settings.'
+...
+--- !Passed
+Pass:            reflow-burst-summary
+Name:            BurstInferredVerboseSummary
+DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 41, 
+                   Column: 26 }
+Function:        _Z20ecg_classify_trainedP8ap_fixedILi16ELi8EL9ap_q_mode5EL9ap_o_mode3ELi0EES3_Pi
+Args:            
+  - String:          'Multiple burst '
+  - Direction:       reads
+  - String:          ' of length '
+  - Length:          '23'
+  - String:          ' and bit width '
+  - Width:           '32'
+  - String:          ' has been inferred.'
+  - String:          ' These burst requests might be further partitioned into multiple requests during RTL generation, based on max_read_burst_length or max_write_burst_length settings.'
+  - String:          ' _XLX_SEP_ '
+  - AccessID:        seq1
+  - ArrayName:       ''
+  - String:          ' '
+  - BundleName:      gmem0
+  - String:          ' '
+  - Function:        'ecg_classify_trained(ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, int*)'
+    DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 27, 
+                       Column: 0 }
+  - String:          ' '
+...
+--- !Passed
+Pass:            reflow-burst-summary
+Name:            BurstInferredSummary
+DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 41, 
+                   Column: 26 }
+Function:        _Z20ecg_classify_trainedP8ap_fixedILi16ELi8EL9ap_q_mode5EL9ap_o_mode3ELi0EES3_Pi
+Args:            
+  - String:          'Multiple burst '
+  - Direction:       reads
+  - String:          ' of length '
+  - Length:          '23'
+  - String:          ' and bit width '
+  - Width:           '32'
+  - String:          ' has been inferred on bundle '''
+  - BundleName:      gmem0
+  - String:          '''.'
+  - String:          ' These burst requests might be further partitioned into multiple requests during RTL generation, based on max_read_burst_length or max_write_burst_length settings.'
+...
+--- !Passed
+Pass:            reflow-burst-summary
+Name:            BurstInferredVerboseSummary
+DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 101, 
+                   Column: 23 }
+Function:        _Z20ecg_classify_trainedP8ap_fixedILi16ELi8EL9ap_q_mode5EL9ap_o_mode3ELi0EES3_Pi
+Args:            
+  - String:          'Multiple burst '
+  - Direction:       reads
+  - String:          ' of length '
+  - Length:          '5'
+  - String:          ' and bit width '
+  - Width:           '16'
+  - String:          ' has been inferred.'
+  - String:          ' These burst requests might be further partitioned into multiple requests during RTL generation, based on max_read_burst_length or max_write_burst_length settings.'
+  - String:          ' _XLX_SEP_ '
+  - AccessID:        seq4
+  - ArrayName:       ''
+  - String:          ' '
+  - BundleName:      gmem1
+  - String:          ' '
+  - LoopName:        VITIS_LOOP_101_9
+  - String:          ' '
+  - LoopLoc:         'hls_source/ecg_trained_classifier.cpp:101:23'
+  - String:          ' '
+  - Function:        'ecg_classify_trained(ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, int*)'
+    DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 27, 
+                       Column: 0 }
+  - String:          ' '
+...
+--- !Passed
+Pass:            reflow-burst-summary
+Name:            BurstInferredSummary
+DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 101, 
+                   Column: 23 }
+Function:        _Z20ecg_classify_trainedP8ap_fixedILi16ELi8EL9ap_q_mode5EL9ap_o_mode3ELi0EES3_Pi
+Args:            
+  - String:          'Multiple burst '
+  - Direction:       reads
+  - String:          ' of length '
+  - Length:          '5'
+  - String:          ' and bit width '
+  - Width:           '16'
+  - String:          ' in loop '''
+  - LoopName:        VITIS_LOOP_101_9
+  - String:          '''('
+  - LoopLoc:         'hls_source/ecg_trained_classifier.cpp:101:23'
+  - String:          ')'
+  - String:          ' has been inferred on bundle '''
+  - BundleName:      gmem1
+  - String:          '''.'
+  - String:          ' These burst requests might be further partitioned into multiple requests during RTL generation, based on max_read_burst_length or max_write_burst_length settings.'
+...
+--- !Passed
+Pass:            reflow-burst-summary
+Name:            BurstInferredVerboseSummary
+DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 41, 
+                   Column: 26 }
+Function:        _Z20ecg_classify_trainedP8ap_fixedILi16ELi8EL9ap_q_mode5EL9ap_o_mode3ELi0EES3_Pi
+Args:            
+  - String:          'Multiple burst '
+  - Direction:       reads
+  - String:          ' of length '
+  - Length:          '23'
+  - String:          ' and bit width '
+  - Width:           '32'
+  - String:          ' has been inferred.'
+  - String:          ' These burst requests might be further partitioned into multiple requests during RTL generation, based on max_read_burst_length or max_write_burst_length settings.'
+  - String:          ' _XLX_SEP_ '
+  - AccessID:        seq2
+  - ArrayName:       ''
+  - String:          ' '
+  - BundleName:      gmem0
+  - String:          ' '
+  - Function:        'ecg_classify_trained(ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, int*)'
+    DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 27, 
+                       Column: 0 }
+  - String:          ' '
+...
+--- !Passed
+Pass:            reflow-burst-summary
+Name:            BurstInferredSummary
+DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 41, 
+                   Column: 26 }
+Function:        _Z20ecg_classify_trainedP8ap_fixedILi16ELi8EL9ap_q_mode5EL9ap_o_mode3ELi0EES3_Pi
+Args:            
+  - String:          'Multiple burst '
+  - Direction:       reads
+  - String:          ' of length '
+  - Length:          '23'
+  - String:          ' and bit width '
+  - Width:           '32'
+  - String:          ' has been inferred on bundle '''
+  - BundleName:      gmem0
+  - String:          '''.'
+  - String:          ' These burst requests might be further partitioned into multiple requests during RTL generation, based on max_read_burst_length or max_write_burst_length settings.'
+...
+--- !Passed
+Pass:            reflow-burst-summary
+Name:            BurstInferredVerboseSummary
+DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 41, 
+                   Column: 26 }
+Function:        _Z20ecg_classify_trainedP8ap_fixedILi16ELi8EL9ap_q_mode5EL9ap_o_mode3ELi0EES3_Pi
+Args:            
+  - String:          'Multiple burst '
+  - Direction:       reads
+  - String:          ' of length '
+  - Length:          '23'
+  - String:          ' and bit width '
+  - Width:           '32'
+  - String:          ' has been inferred.'
+  - String:          ' These burst requests might be further partitioned into multiple requests during RTL generation, based on max_read_burst_length or max_write_burst_length settings.'
+  - String:          ' _XLX_SEP_ '
+  - AccessID:        seq3
+  - ArrayName:       ''
+  - String:          ' '
+  - BundleName:      gmem0
+  - String:          ' '
+  - Function:        'ecg_classify_trained(ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, ap_fixed<16, 8, (ap_q_mode)5, (ap_o_mode)3, 0>*, int*)'
+    DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 27, 
+                       Column: 0 }
+  - String:          ' '
+...
+--- !Passed
+Pass:            reflow-burst-summary
+Name:            BurstInferredSummary
+DebugLoc:        { File: hls_source/ecg_trained_classifier.cpp, Line: 41, 
+                   Column: 26 }
+Function:        _Z20ecg_classify_trainedP8ap_fixedILi16ELi8EL9ap_q_mode5EL9ap_o_mode3ELi0EES3_Pi
+Args:            
+  - String:          'Multiple burst '
+  - Direction:       reads
+  - String:          ' of length '
+  - Length:          '23'
+  - String:          ' and bit width '
+  - Width:           '32'
+  - String:          ' has been inferred on bundle '''
+  - BundleName:      gmem0
+  - String:          '''.'
+  - String:          ' These burst requests might be further partitioned into multiple requests during RTL generation, based on max_read_burst_length or max_write_burst_length settings.'
+...

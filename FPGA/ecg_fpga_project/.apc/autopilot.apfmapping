@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<autopilotfilemapping:AutoPilotFileMapping xmlns:autopilotfilemapping="www.autoesl.com/autopilotfilemapping">
+  <source>
+    <originFiles name="weights.h" path="D:\Git\Project\FPGA\hls_source\weights.h"/>
+    <originFiles name="ecg_params.vh" path="D:\Git\Project\FPGA\hls_source\ecg_params.vh"/>
+    <originFiles name="ecg_trained_classifier.cpp" path="D:\Git\Project\FPGA\hls_source\ecg_trained_classifier.cpp"/>
+  </source>
+  <testbench>
+    <originFiles name="tb_ecg_classifier.cpp" path="D:\Git\Project\FPGA\testbench\tb_ecg_classifier.cpp"/>
+  </testbench>
+</autopilotfilemapping:AutoPilotFileMapping>

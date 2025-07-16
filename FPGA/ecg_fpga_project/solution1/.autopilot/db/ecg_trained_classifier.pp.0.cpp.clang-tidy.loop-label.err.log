@@ -1,0 +1,3 @@
+26 errors generated.
+Error while processing D:\Git\Project\FPGA\ecg_fpga_project\solution1\.autopilot\db\ecg_trained_classifier.pp.0.cpp.
+clang-tidy applied 139 of 139 suggested fixes.

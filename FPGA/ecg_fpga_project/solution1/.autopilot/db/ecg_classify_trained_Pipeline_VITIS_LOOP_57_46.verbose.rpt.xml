@@ -1,0 +1,322 @@
+<profile>
+
+<section name = "Vitis HLS Report for 'ecg_classify_trained_Pipeline_VITIS_LOOP_57_46'" level="0">
+<item name = "Date">Wed Jul 16 22:38:45 2025
+</item>
+<item name = "Version">2024.1.2 (Build 5096458 on Sep  5 2024)</item>
+<item name = "Project">ecg_fpga_project</item>
+<item name = "Solution">solution1 (Vivado IP Flow Target)</item>
+<item name = "Product family">zynq</item>
+<item name = "Target device">xc7z020-clg400-1</item>
+</section>
+
+<section name = "Performance Estimates" level="0">
+<item name = "Timing">
+<section name = "" level="1">
+<item name = "Summary"><table name="" hasTotal="0">
+<keys size="4">Clock, Target, Estimated, Uncertainty</keys>
+<column name="ap_clk">10.00 ns, 5.819 ns, 2.70 ns</column>
+</table>
+</item>
+</section>
+</item>
+<item name = "Latency">
+<section name = "" level="1">
+<item name = "Summary"><table name="" hasTotal="0">
+<keys size="8">, min, max, min, max, min, max, Type</keys>
+<column name="">138, 138, 1.380 us, 1.380 us, 129, 129, loop auto-rewind stp(delay=0 clock cycles(s))</column>
+</table>
+</item>
+<item name = "Detail">
+<section name = "" level="1">
+<item name = "Instance"><table name="" hasTotal="0">
+<keys size="9">Instance, Module, min, max, min, max, min, max, Type</keys>
+</table>
+</item>
+<item name = "Loop"><table name="" hasTotal="0">
+<keys size="8">Loop Name, min, max, Latency, achieved, target, Count, Pipelined</keys>
+<column name="- VITIS_LOOP_57_4">136, 136, 10, 1, 1, 128, yes</column>
+</table>
+</item>
+</section>
+</item>
+</section>
+</item>
+</section>
+
+<section name = "Utilization Estimates" level="0">
+<item name = "Summary"><table name="" hasTotal="1">
+<keys size="6">Name, BRAM_18K, DSP, FF, LUT, URAM</keys>
+<column name="DSP">-, 1, -, -, -</column>
+<column name="Expression">-, -, 0, 553, -</column>
+<column name="FIFO">-, -, -, -, -</column>
+<column name="Instance">-, -, 0, 687, -</column>
+<column name="Memory">-, -, -, -, -</column>
+<column name="Multiplexer">-, -, 0, 54, -</column>
+<column name="Register">-, -, 500, 64, -</column>
+<specialColumn name="Available">280, 220, 106400, 53200, 0</specialColumn>
+<specialColumn name="Utilization (%)">0, ~0, ~0, 2, 0</specialColumn>
+</table>
+</item>
+<item name = "Detail">
+<section name = "" level="1">
+<item name = "Instance"><table name="" hasTotal="1">
+<keys size="7">Instance, Module, BRAM_18K, DSP, FF, LUT, URAM</keys>
+<column name="sparsemux_257_7_16_1_1_U449">sparsemux_257_7_16_1_1, 0, 0, 0, 673, 0</column>
+<column name="sparsemux_9_3_16_1_1_U450">sparsemux_9_3_16_1_1, 0, 0, 0, 14, 0</column>
+</table>
+</item>
+<item name = "DSP"><table name="" hasTotal="0">
+<keys size="3">Instance, Module, Expression</keys>
+<column name="mac_muladd_16s_16s_32ns_32_4_1_U451">mac_muladd_16s_16s_32ns_32_4_1, i0 * i1 + i2</column>
+</table>
+</item>
+<item name = "Memory"><table name="" hasTotal="1">
+<keys size="10">Memory, Module, BRAM_18K, FF, LUT, URAM, Words, Bits, Banks, W*Bits*Banks</keys>
+</table>
+</item>
+<item name = "FIFO"><table name="" hasTotal="1">
+<keys size="8">Name, BRAM_18K, FF, LUT, URAM, Depth, Bits, Size:D*B</keys>
+</table>
+</item>
+<item name = "Expression"><table name="" hasTotal="1">
+<keys size="7">Variable Name, Operation, DSP, FF, LUT, Bitwidth P0, Bitwidth P1</keys>
+<column name="add_ln57_fu_1446_p2">+, 0, 0, 15, 8, 1</column>
+<column name="add_ln59_fu_2074_p2">+, 0, 0, 12, 11, 5</column>
+<column name="sub_ln59_1_fu_2058_p2">-, 0, 0, 12, 11, 12</column>
+<column name="sub_ln59_2_fu_2080_p2">-, 0, 0, 12, 4, 11</column>
+<column name="sub_ln59_fu_2040_p2">-, 0, 0, 61, 1, 54</column>
+<column name="and_ln59_1_fu_2132_p2">and, 0, 0, 2, 1, 1</column>
+<column name="and_ln59_fu_2190_p2">and, 0, 0, 2, 1, 1</column>
+<column name="ashr_ln59_fu_2146_p2">ashr, 0, 0, 161, 54, 54</column>
+<column name="icmp_ln57_fu_1440_p2">icmp, 0, 0, 14, 8, 9</column>
+<column name="icmp_ln59_1_fu_2068_p2">icmp, 0, 0, 12, 12, 4</column>
+<column name="icmp_ln59_2_fu_2094_p2">icmp, 0, 0, 12, 12, 4</column>
+<column name="icmp_ln59_3_fu_2138_p2">icmp, 0, 0, 12, 11, 6</column>
+<column name="icmp_ln59_4_fu_2114_p2">icmp, 0, 0, 14, 7, 1</column>
+<column name="icmp_ln59_fu_2053_p2">icmp, 0, 0, 70, 63, 1</column>
+<column name="or_ln59_fu_2120_p2">or, 0, 0, 2, 1, 1</column>
+<column name="select_ln59_1_fu_2086_p3">select, 0, 0, 11, 1, 11</column>
+<column name="select_ln59_2_fu_2155_p3">select, 0, 0, 2, 1, 2</column>
+<column name="select_ln59_3_fu_2162_p3">select, 0, 0, 16, 1, 16</column>
+<column name="select_ln59_4_fu_2178_p3">select, 0, 0, 16, 1, 16</column>
+<column name="select_ln59_fu_2046_p3">select, 0, 0, 54, 1, 54</column>
+<column name="shl_ln59_fu_2173_p2">shl, 0, 0, 35, 16, 16</column>
+<column name="ap_enable_pp0">xor, 0, 0, 2, 1, 2</column>
+<column name="xor_ln59_1_fu_2126_p2">xor, 0, 0, 2, 1, 2</column>
+<column name="xor_ln59_fu_2185_p2">xor, 0, 0, 2, 1, 2</column>
+</table>
+</item>
+<item name = "Multiplexer"><table name="" hasTotal="1">
+<keys size="5">Name, LUT, Input Size, Bits, Total Bits</keys>
+<column name="ap_done_int">9, 2, 1, 2</column>
+<column name="ap_enable_reg_pp0_iter9">9, 2, 1, 2</column>
+<column name="ap_sig_allocacmp_j_8">9, 2, 8, 16</column>
+<column name="ap_sig_allocacmp_sum_19">9, 2, 32, 64</column>
+<column name="j_fu_616">9, 2, 8, 16</column>
+<column name="sum_fu_612">9, 2, 32, 64</column>
+</table>
+</item>
+<item name = "Register"><table name="" hasTotal="1">
+<keys size="5">Name, FF, LUT, Bits, Const Bits</keys>
+<column name="and_ln59_1_reg_2340">1, 0, 1, 0</column>
+<column name="and_ln59_1_reg_2340_pp0_iter5_reg">1, 0, 1, 0</column>
+<column name="ap_CS_fsm">1, 0, 1, 0</column>
+<column name="ap_done_reg">1, 0, 1, 0</column>
+<column name="ap_enable_reg_pp0_iter1">1, 0, 1, 0</column>
+<column name="ap_enable_reg_pp0_iter2">1, 0, 1, 0</column>
+<column name="ap_enable_reg_pp0_iter3">1, 0, 1, 0</column>
+<column name="ap_enable_reg_pp0_iter4">1, 0, 1, 0</column>
+<column name="ap_enable_reg_pp0_iter5">1, 0, 1, 0</column>
+<column name="ap_enable_reg_pp0_iter6">1, 0, 1, 0</column>
+<column name="ap_enable_reg_pp0_iter7">1, 0, 1, 0</column>
+<column name="ap_enable_reg_pp0_iter8">1, 0, 1, 0</column>
+<column name="ap_enable_reg_pp0_iter9">1, 0, 1, 0</column>
+<column name="ap_loop_exit_ready_pp0_iter1_reg">1, 0, 1, 0</column>
+<column name="ap_loop_exit_ready_pp0_iter2_reg">1, 0, 1, 0</column>
+<column name="ap_loop_exit_ready_pp0_iter3_reg">1, 0, 1, 0</column>
+<column name="ap_loop_exit_ready_pp0_iter4_reg">1, 0, 1, 0</column>
+<column name="ap_loop_exit_ready_pp0_iter5_reg">1, 0, 1, 0</column>
+<column name="ap_loop_exit_ready_pp0_iter6_reg">1, 0, 1, 0</column>
+<column name="ap_loop_exit_ready_pp0_iter7_reg">1, 0, 1, 0</column>
+<column name="ap_loop_exit_ready_pp0_iter8_reg">1, 0, 1, 0</column>
+<column name="dense_1_weights_load_reg_2280">32, 0, 32, 0</column>
+<column name="icmp_ln57_reg_2266">1, 0, 1, 0</column>
+<column name="icmp_ln59_2_reg_2324">1, 0, 1, 0</column>
+<column name="icmp_ln59_2_reg_2324_pp0_iter5_reg">1, 0, 1, 0</column>
+<column name="icmp_ln59_4_reg_2335">1, 0, 1, 0</column>
+<column name="icmp_ln59_reg_2311">1, 0, 1, 0</column>
+<column name="icmp_ln59_reg_2311_pp0_iter5_reg">1, 0, 1, 0</column>
+<column name="j_fu_616">8, 0, 8, 0</column>
+<column name="select_ln59_1_reg_2317">11, 0, 11, 0</column>
+<column name="select_ln59_3_reg_2345">16, 0, 16, 0</column>
+<column name="select_ln59_4_reg_2350">16, 0, 16, 0</column>
+<column name="select_ln59_reg_2306">54, 0, 54, 0</column>
+<column name="sum_fu_612">32, 0, 32, 0</column>
+<column name="tmp_19_reg_2275">16, 0, 16, 0</column>
+<column name="tmp_reg_2290">1, 0, 1, 0</column>
+<column name="tmp_reg_2290_pp0_iter4_reg">1, 0, 1, 0</column>
+<column name="tmp_s_reg_2296">11, 0, 11, 0</column>
+<column name="trunc_ln59_1_reg_2301">52, 0, 52, 0</column>
+<column name="trunc_ln59_3_reg_2329">16, 0, 16, 0</column>
+<column name="trunc_ln59_3_reg_2329_pp0_iter5_reg">16, 0, 16, 0</column>
+<column name="trunc_ln59_reg_2285">63, 0, 63, 0</column>
+<column name="icmp_ln57_reg_2266">64, 32, 1, 0</column>
+<column name="tmp_19_reg_2275">64, 32, 16, 0</column>
+</table>
+</item>
+</section>
+</item>
+</section>
+
+<section name = "Interface" level="0">
+<item name = "Summary"><table name="" hasTotal="0">
+<keys size="6">RTL Ports, Dir, Bits, Protocol, Source Object, C Type</keys>
+<column name="ap_clk">in, 1, ap_ctrl_hs, ecg_classify_trained_Pipeline_VITIS_LOOP_57_46, return value</column>
+<column name="ap_rst">in, 1, ap_ctrl_hs, ecg_classify_trained_Pipeline_VITIS_LOOP_57_46, return value</column>
+<column name="ap_start">in, 1, ap_ctrl_hs, ecg_classify_trained_Pipeline_VITIS_LOOP_57_46, return value</column>
+<column name="ap_done">out, 1, ap_ctrl_hs, ecg_classify_trained_Pipeline_VITIS_LOOP_57_46, return value</column>
+<column name="ap_idle">out, 1, ap_ctrl_hs, ecg_classify_trained_Pipeline_VITIS_LOOP_57_46, return value</column>
+<column name="ap_ready">out, 1, ap_ctrl_hs, ecg_classify_trained_Pipeline_VITIS_LOOP_57_46, return value</column>
+<column name="grp_fu_13213_p_din0">out, 32, ap_ctrl_hs, ecg_classify_trained_Pipeline_VITIS_LOOP_57_46, return value</column>
+<column name="grp_fu_13213_p_dout0">in, 64, ap_ctrl_hs, ecg_classify_trained_Pipeline_VITIS_LOOP_57_46, return value</column>
+<column name="grp_fu_13213_p_ce">out, 1, ap_ctrl_hs, ecg_classify_trained_Pipeline_VITIS_LOOP_57_46, return value</column>
+<column name="sext_ln55_11">in, 24, ap_none, sext_ln55_11, scalar</column>
+<column name="tmp_120">in, 4, ap_none, tmp_120, scalar</column>
+<column name="hidden1">in, 16, ap_none, hidden1, scalar</column>
+<column name="hidden1_1">in, 16, ap_none, hidden1_1, scalar</column>
+<column name="hidden1_2">in, 16, ap_none, hidden1_2, scalar</column>
+<column name="hidden1_3">in, 16, ap_none, hidden1_3, scalar</column>
+<column name="hidden1_4">in, 16, ap_none, hidden1_4, scalar</column>
+<column name="hidden1_5">in, 16, ap_none, hidden1_5, scalar</column>
+<column name="hidden1_6">in, 16, ap_none, hidden1_6, scalar</column>
+<column name="hidden1_7">in, 16, ap_none, hidden1_7, scalar</column>
+<column name="hidden1_8">in, 16, ap_none, hidden1_8, scalar</column>
+<column name="hidden1_9">in, 16, ap_none, hidden1_9, scalar</column>
+<column name="hidden1_10">in, 16, ap_none, hidden1_10, scalar</column>
+<column name="hidden1_11">in, 16, ap_none, hidden1_11, scalar</column>
+<column name="hidden1_12">in, 16, ap_none, hidden1_12, scalar</column>
+<column name="hidden1_13">in, 16, ap_none, hidden1_13, scalar</column>
+<column name="hidden1_14">in, 16, ap_none, hidden1_14, scalar</column>
+<column name="hidden1_15">in, 16, ap_none, hidden1_15, scalar</column>
+<column name="hidden1_16">in, 16, ap_none, hidden1_16, scalar</column>
+<column name="hidden1_17">in, 16, ap_none, hidden1_17, scalar</column>
+<column name="hidden1_18">in, 16, ap_none, hidden1_18, scalar</column>
+<column name="hidden1_19">in, 16, ap_none, hidden1_19, scalar</column>
+<column name="hidden1_20">in, 16, ap_none, hidden1_20, scalar</column>
+<column name="hidden1_21">in, 16, ap_none, hidden1_21, scalar</column>
+<column name="hidden1_22">in, 16, ap_none, hidden1_22, scalar</column>
+<column name="hidden1_23">in, 16, ap_none, hidden1_23, scalar</column>
+<column name="hidden1_24">in, 16, ap_none, hidden1_24, scalar</column>
+<column name="hidden1_25">in, 16, ap_none, hidden1_25, scalar</column>
+<column name="hidden1_26">in, 16, ap_none, hidden1_26, scalar</column>
+<column name="hidden1_27">in, 16, ap_none, hidden1_27, scalar</column>
+<column name="hidden1_28">in, 16, ap_none, hidden1_28, scalar</column>
+<column name="hidden1_29">in, 16, ap_none, hidden1_29, scalar</column>
+<column name="hidden1_30">in, 16, ap_none, hidden1_30, scalar</column>
+<column name="hidden1_31">in, 16, ap_none, hidden1_31, scalar</column>
+<column name="hidden1_32">in, 16, ap_none, hidden1_32, scalar</column>
+<column name="hidden1_33">in, 16, ap_none, hidden1_33, scalar</column>
+<column name="hidden1_34">in, 16, ap_none, hidden1_34, scalar</column>
+<column name="hidden1_35">in, 16, ap_none, hidden1_35, scalar</column>
+<column name="hidden1_36">in, 16, ap_none, hidden1_36, scalar</column>
+<column name="hidden1_37">in, 16, ap_none, hidden1_37, scalar</column>
+<column name="hidden1_38">in, 16, ap_none, hidden1_38, scalar</column>
+<column name="hidden1_39">in, 16, ap_none, hidden1_39, scalar</column>
+<column name="hidden1_40">in, 16, ap_none, hidden1_40, scalar</column>
+<column name="hidden1_41">in, 16, ap_none, hidden1_41, scalar</column>
+<column name="hidden1_42">in, 16, ap_none, hidden1_42, scalar</column>
+<column name="hidden1_43">in, 16, ap_none, hidden1_43, scalar</column>
+<column name="hidden1_44">in, 16, ap_none, hidden1_44, scalar</column>
+<column name="hidden1_45">in, 16, ap_none, hidden1_45, scalar</column>
+<column name="hidden1_46">in, 16, ap_none, hidden1_46, scalar</column>
+<column name="hidden1_47">in, 16, ap_none, hidden1_47, scalar</column>
+<column name="hidden1_48">in, 16, ap_none, hidden1_48, scalar</column>
+<column name="hidden1_49">in, 16, ap_none, hidden1_49, scalar</column>
+<column name="hidden1_50">in, 16, ap_none, hidden1_50, scalar</column>
+<column name="hidden1_51">in, 16, ap_none, hidden1_51, scalar</column>
+<column name="hidden1_52">in, 16, ap_none, hidden1_52, scalar</column>
+<column name="hidden1_53">in, 16, ap_none, hidden1_53, scalar</column>
+<column name="hidden1_54">in, 16, ap_none, hidden1_54, scalar</column>
+<column name="hidden1_55">in, 16, ap_none, hidden1_55, scalar</column>
+<column name="hidden1_56">in, 16, ap_none, hidden1_56, scalar</column>
+<column name="hidden1_57">in, 16, ap_none, hidden1_57, scalar</column>
+<column name="hidden1_58">in, 16, ap_none, hidden1_58, scalar</column>
+<column name="hidden1_59">in, 16, ap_none, hidden1_59, scalar</column>
+<column name="hidden1_60">in, 16, ap_none, hidden1_60, scalar</column>
+<column name="hidden1_61">in, 16, ap_none, hidden1_61, scalar</column>
+<column name="hidden1_62">in, 16, ap_none, hidden1_62, scalar</column>
+<column name="hidden1_63">in, 16, ap_none, hidden1_63, scalar</column>
+<column name="hidden1_64">in, 16, ap_none, hidden1_64, scalar</column>
+<column name="hidden1_65">in, 16, ap_none, hidden1_65, scalar</column>
+<column name="hidden1_66">in, 16, ap_none, hidden1_66, scalar</column>
+<column name="hidden1_67">in, 16, ap_none, hidden1_67, scalar</column>
+<column name="hidden1_68">in, 16, ap_none, hidden1_68, scalar</column>
+<column name="hidden1_69">in, 16, ap_none, hidden1_69, scalar</column>
+<column name="hidden1_70">in, 16, ap_none, hidden1_70, scalar</column>
+<column name="hidden1_71">in, 16, ap_none, hidden1_71, scalar</column>
+<column name="hidden1_72">in, 16, ap_none, hidden1_72, scalar</column>
+<column name="hidden1_73">in, 16, ap_none, hidden1_73, scalar</column>
+<column name="hidden1_74">in, 16, ap_none, hidden1_74, scalar</column>
+<column name="hidden1_75">in, 16, ap_none, hidden1_75, scalar</column>
+<column name="hidden1_76">in, 16, ap_none, hidden1_76, scalar</column>
+<column name="hidden1_77">in, 16, ap_none, hidden1_77, scalar</column>
+<column name="hidden1_78">in, 16, ap_none, hidden1_78, scalar</column>
+<column name="hidden1_79">in, 16, ap_none, hidden1_79, scalar</column>
+<column name="hidden1_80">in, 16, ap_none, hidden1_80, scalar</column>
+<column name="hidden1_81">in, 16, ap_none, hidden1_81, scalar</column>
+<column name="hidden1_82">in, 16, ap_none, hidden1_82, scalar</column>
+<column name="hidden1_83">in, 16, ap_none, hidden1_83, scalar</column>
+<column name="hidden1_84">in, 16, ap_none, hidden1_84, scalar</column>
+<column name="hidden1_85">in, 16, ap_none, hidden1_85, scalar</column>
+<column name="hidden1_86">in, 16, ap_none, hidden1_86, scalar</column>
+<column name="hidden1_87">in, 16, ap_none, hidden1_87, scalar</column>
+<column name="hidden1_88">in, 16, ap_none, hidden1_88, scalar</column>
+<column name="hidden1_89">in, 16, ap_none, hidden1_89, scalar</column>
+<column name="hidden1_90">in, 16, ap_none, hidden1_90, scalar</column>
+<column name="hidden1_91">in, 16, ap_none, hidden1_91, scalar</column>
+<column name="hidden1_92">in, 16, ap_none, hidden1_92, scalar</column>
+<column name="hidden1_93">in, 16, ap_none, hidden1_93, scalar</column>
+<column name="hidden1_94">in, 16, ap_none, hidden1_94, scalar</column>
+<column name="hidden1_95">in, 16, ap_none, hidden1_95, scalar</column>
+<column name="hidden1_96">in, 16, ap_none, hidden1_96, scalar</column>
+<column name="hidden1_97">in, 16, ap_none, hidden1_97, scalar</column>
+<column name="hidden1_98">in, 16, ap_none, hidden1_98, scalar</column>
+<column name="hidden1_99">in, 16, ap_none, hidden1_99, scalar</column>
+<column name="hidden1_100">in, 16, ap_none, hidden1_100, scalar</column>
+<column name="hidden1_101">in, 16, ap_none, hidden1_101, scalar</column>
+<column name="hidden1_102">in, 16, ap_none, hidden1_102, scalar</column>
+<column name="hidden1_103">in, 16, ap_none, hidden1_103, scalar</column>
+<column name="hidden1_104">in, 16, ap_none, hidden1_104, scalar</column>
+<column name="hidden1_105">in, 16, ap_none, hidden1_105, scalar</column>
+<column name="hidden1_106">in, 16, ap_none, hidden1_106, scalar</column>
+<column name="hidden1_107">in, 16, ap_none, hidden1_107, scalar</column>
+<column name="hidden1_108">in, 16, ap_none, hidden1_108, scalar</column>
+<column name="hidden1_109">in, 16, ap_none, hidden1_109, scalar</column>
+<column name="hidden1_110">in, 16, ap_none, hidden1_110, scalar</column>
+<column name="hidden1_111">in, 16, ap_none, hidden1_111, scalar</column>
+<column name="hidden1_112">in, 16, ap_none, hidden1_112, scalar</column>
+<column name="hidden1_113">in, 16, ap_none, hidden1_113, scalar</column>
+<column name="hidden1_114">in, 16, ap_none, hidden1_114, scalar</column>
+<column name="hidden1_115">in, 16, ap_none, hidden1_115, scalar</column>
+<column name="hidden1_116">in, 16, ap_none, hidden1_116, scalar</column>
+<column name="hidden1_117">in, 16, ap_none, hidden1_117, scalar</column>
+<column name="hidden1_118">in, 16, ap_none, hidden1_118, scalar</column>
+<column name="hidden1_119">in, 16, ap_none, hidden1_119, scalar</column>
+<column name="hidden1_120">in, 16, ap_none, hidden1_120, scalar</column>
+<column name="hidden1_121">in, 16, ap_none, hidden1_121, scalar</column>
+<column name="hidden1_122">in, 16, ap_none, hidden1_122, scalar</column>
+<column name="hidden1_123">in, 16, ap_none, hidden1_123, scalar</column>
+<column name="hidden1_124">in, 16, ap_none, hidden1_124, scalar</column>
+<column name="hidden1_125">in, 16, ap_none, hidden1_125, scalar</column>
+<column name="hidden1_126">in, 16, ap_none, hidden1_126, scalar</column>
+<column name="hidden1_127">in, 16, ap_none, hidden1_127, scalar</column>
+<column name="sum_53_out">out, 24, ap_vld, sum_53_out, pointer</column>
+<column name="sum_53_out_ap_vld">out, 1, ap_vld, sum_53_out, pointer</column>
+<column name="dense_1_weights_address0">out, 13, ap_memory, dense_1_weights, array</column>
+<column name="dense_1_weights_ce0">out, 1, ap_memory, dense_1_weights, array</column>
+<column name="dense_1_weights_q0">in, 32, ap_memory, dense_1_weights, array</column>
+</table>
+</item>
+</section>
+</profile>

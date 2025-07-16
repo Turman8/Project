@@ -1,0 +1,55 @@
+set SynModuleInfo {
+  {SRCNAME ecg_classify_trained_Pipeline_VITIS_LOOP_41_2 MODELNAME ecg_classify_trained_Pipeline_VITIS_LOOP_41_2 RTLNAME ecg_classify_trained_ecg_classify_trained_Pipeline_VITIS_LOOP_41_2
+    SUBMODULES {
+      {MODELNAME ecg_classify_trained_sparsemux_9_3_16_1_1 RTLNAME ecg_classify_trained_sparsemux_9_3_16_1_1 BINDTYPE op TYPE sparsemux IMPL auto}
+      {MODELNAME ecg_classify_trained_mac_muladd_16s_16s_32ns_32_4_1 RTLNAME ecg_classify_trained_mac_muladd_16s_16s_32ns_32_4_1 BINDTYPE op TYPE all IMPL dsp_slice LATENCY 3}
+      {MODELNAME ecg_classify_trained_flow_control_loop_pipe_sequential_init RTLNAME ecg_classify_trained_flow_control_loop_pipe_sequential_init BINDTYPE interface TYPE internal_upc_flow_control INSTNAME ecg_classify_trained_flow_control_loop_pipe_sequential_init_U}
+    }
+  }
+  {SRCNAME ecg_classify_trained_Pipeline_VITIS_LOOP_41_21 MODELNAME ecg_classify_trained_Pipeline_VITIS_LOOP_41_21 RTLNAME ecg_classify_trained_ecg_classify_trained_Pipeline_VITIS_LOOP_41_21}
+  {SRCNAME ecg_classify_trained_Pipeline_VITIS_LOOP_41_22 MODELNAME ecg_classify_trained_Pipeline_VITIS_LOOP_41_22 RTLNAME ecg_classify_trained_ecg_classify_trained_Pipeline_VITIS_LOOP_41_22}
+  {SRCNAME ecg_classify_trained_Pipeline_VITIS_LOOP_41_23 MODELNAME ecg_classify_trained_Pipeline_VITIS_LOOP_41_23 RTLNAME ecg_classify_trained_ecg_classify_trained_Pipeline_VITIS_LOOP_41_23}
+  {SRCNAME ecg_classify_trained_Pipeline_VITIS_LOOP_57_4 MODELNAME ecg_classify_trained_Pipeline_VITIS_LOOP_57_4 RTLNAME ecg_classify_trained_ecg_classify_trained_Pipeline_VITIS_LOOP_57_4
+    SUBMODULES {
+      {MODELNAME ecg_classify_trained_sparsemux_257_7_16_1_1 RTLNAME ecg_classify_trained_sparsemux_257_7_16_1_1 BINDTYPE op TYPE sparsemux IMPL auto}
+    }
+  }
+  {SRCNAME ecg_classify_trained_Pipeline_VITIS_LOOP_57_44 MODELNAME ecg_classify_trained_Pipeline_VITIS_LOOP_57_44 RTLNAME ecg_classify_trained_ecg_classify_trained_Pipeline_VITIS_LOOP_57_44}
+  {SRCNAME ecg_classify_trained_Pipeline_VITIS_LOOP_57_45 MODELNAME ecg_classify_trained_Pipeline_VITIS_LOOP_57_45 RTLNAME ecg_classify_trained_ecg_classify_trained_Pipeline_VITIS_LOOP_57_45}
+  {SRCNAME ecg_classify_trained_Pipeline_VITIS_LOOP_57_46 MODELNAME ecg_classify_trained_Pipeline_VITIS_LOOP_57_46 RTLNAME ecg_classify_trained_ecg_classify_trained_Pipeline_VITIS_LOOP_57_46}
+  {SRCNAME ecg_classify_trained_Pipeline_VITIS_LOOP_73_6 MODELNAME ecg_classify_trained_Pipeline_VITIS_LOOP_73_6 RTLNAME ecg_classify_trained_ecg_classify_trained_Pipeline_VITIS_LOOP_73_6
+    SUBMODULES {
+      {MODELNAME ecg_classify_trained_sparsemux_129_6_16_1_1 RTLNAME ecg_classify_trained_sparsemux_129_6_16_1_1 BINDTYPE op TYPE sparsemux IMPL auto}
+    }
+  }
+  {SRCNAME ecg_classify_trained_Pipeline_VITIS_LOOP_73_67 MODELNAME ecg_classify_trained_Pipeline_VITIS_LOOP_73_67 RTLNAME ecg_classify_trained_ecg_classify_trained_Pipeline_VITIS_LOOP_73_67}
+  {SRCNAME ecg_classify_trained_Pipeline_VITIS_LOOP_73_68 MODELNAME ecg_classify_trained_Pipeline_VITIS_LOOP_73_68 RTLNAME ecg_classify_trained_ecg_classify_trained_Pipeline_VITIS_LOOP_73_68}
+  {SRCNAME ecg_classify_trained_Pipeline_VITIS_LOOP_73_69 MODELNAME ecg_classify_trained_Pipeline_VITIS_LOOP_73_69 RTLNAME ecg_classify_trained_ecg_classify_trained_Pipeline_VITIS_LOOP_73_69}
+  {SRCNAME ecg_classify_trained_Pipeline_VITIS_LOOP_88_8 MODELNAME ecg_classify_trained_Pipeline_VITIS_LOOP_88_8 RTLNAME ecg_classify_trained_ecg_classify_trained_Pipeline_VITIS_LOOP_88_8
+    SUBMODULES {
+      {MODELNAME ecg_classify_trained_sparsemux_65_5_16_1_1 RTLNAME ecg_classify_trained_sparsemux_65_5_16_1_1 BINDTYPE op TYPE sparsemux IMPL auto}
+    }
+  }
+  {SRCNAME ecg_classify_trained_Pipeline_VITIS_LOOP_88_810 MODELNAME ecg_classify_trained_Pipeline_VITIS_LOOP_88_810 RTLNAME ecg_classify_trained_ecg_classify_trained_Pipeline_VITIS_LOOP_88_810}
+  {SRCNAME ecg_classify_trained_Pipeline_VITIS_LOOP_88_811 MODELNAME ecg_classify_trained_Pipeline_VITIS_LOOP_88_811 RTLNAME ecg_classify_trained_ecg_classify_trained_Pipeline_VITIS_LOOP_88_811}
+  {SRCNAME ecg_classify_trained_Pipeline_VITIS_LOOP_88_812 MODELNAME ecg_classify_trained_Pipeline_VITIS_LOOP_88_812 RTLNAME ecg_classify_trained_ecg_classify_trained_Pipeline_VITIS_LOOP_88_812}
+  {SRCNAME ecg_classify_trained_Pipeline_VITIS_LOOP_88_813 MODELNAME ecg_classify_trained_Pipeline_VITIS_LOOP_88_813 RTLNAME ecg_classify_trained_ecg_classify_trained_Pipeline_VITIS_LOOP_88_813}
+  {SRCNAME ecg_classify_trained_Pipeline_VITIS_LOOP_88_814 MODELNAME ecg_classify_trained_Pipeline_VITIS_LOOP_88_814 RTLNAME ecg_classify_trained_ecg_classify_trained_Pipeline_VITIS_LOOP_88_814}
+  {SRCNAME ecg_classify_trained_Pipeline_VITIS_LOOP_101_9 MODELNAME ecg_classify_trained_Pipeline_VITIS_LOOP_101_9 RTLNAME ecg_classify_trained_ecg_classify_trained_Pipeline_VITIS_LOOP_101_9}
+  {SRCNAME ecg_classify_trained MODELNAME ecg_classify_trained RTLNAME ecg_classify_trained IS_TOP 1
+    SUBMODULES {
+      {MODELNAME ecg_classify_trained_fpext_32ns_64_2_no_dsp_1 RTLNAME ecg_classify_trained_fpext_32ns_64_2_no_dsp_1 BINDTYPE op TYPE fpext IMPL auto LATENCY 1 ALLOW_PRAGMA 1}
+      {MODELNAME ecg_classify_trained_dense_biases_ROM_AUTO_1R RTLNAME ecg_classify_trained_dense_biases_ROM_AUTO_1R BINDTYPE storage TYPE rom IMPL auto LATENCY 2 ALLOW_PRAGMA 1}
+      {MODELNAME ecg_classify_trained_dense_weights_ROM_AUTO_1R RTLNAME ecg_classify_trained_dense_weights_ROM_AUTO_1R BINDTYPE storage TYPE rom IMPL auto LATENCY 2 ALLOW_PRAGMA 1}
+      {MODELNAME ecg_classify_trained_dense_1_biases_ROM_AUTO_1R RTLNAME ecg_classify_trained_dense_1_biases_ROM_AUTO_1R BINDTYPE storage TYPE rom IMPL auto LATENCY 2 ALLOW_PRAGMA 1}
+      {MODELNAME ecg_classify_trained_dense_1_weights_ROM_AUTO_1R RTLNAME ecg_classify_trained_dense_1_weights_ROM_AUTO_1R BINDTYPE storage TYPE rom IMPL auto LATENCY 2 ALLOW_PRAGMA 1}
+      {MODELNAME ecg_classify_trained_dense_3_weights_ROM_AUTO_1R RTLNAME ecg_classify_trained_dense_3_weights_ROM_AUTO_1R BINDTYPE storage TYPE rom IMPL auto LATENCY 2 ALLOW_PRAGMA 1}
+      {MODELNAME ecg_classify_trained_dense_2_biases_ROM_AUTO_1R RTLNAME ecg_classify_trained_dense_2_biases_ROM_AUTO_1R BINDTYPE storage TYPE rom IMPL auto LATENCY 2 ALLOW_PRAGMA 1}
+      {MODELNAME ecg_classify_trained_dense_2_weights_ROM_AUTO_1R RTLNAME ecg_classify_trained_dense_2_weights_ROM_AUTO_1R BINDTYPE storage TYPE rom IMPL auto LATENCY 2 ALLOW_PRAGMA 1}
+      {MODELNAME ecg_classify_trained_gmem0_m_axi RTLNAME ecg_classify_trained_gmem0_m_axi BINDTYPE interface TYPE adapter IMPL m_axi}
+      {MODELNAME ecg_classify_trained_gmem1_m_axi RTLNAME ecg_classify_trained_gmem1_m_axi BINDTYPE interface TYPE adapter IMPL m_axi}
+      {MODELNAME ecg_classify_trained_gmem2_m_axi RTLNAME ecg_classify_trained_gmem2_m_axi BINDTYPE interface TYPE adapter IMPL m_axi}
+      {MODELNAME ecg_classify_trained_control_s_axi RTLNAME ecg_classify_trained_control_s_axi BINDTYPE interface TYPE interface_s_axilite}
+    }
+  }
+}

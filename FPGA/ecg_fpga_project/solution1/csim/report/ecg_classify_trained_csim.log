@@ -1,0 +1,38 @@
+INFO: [SIM 2] *************** CSIM start ***************
+INFO: [SIM 4] CSIM will launch CLANG as the compiler.
+   Compiling ../../../../testbench/tb_ecg_classifier.cpp in debug mode
+   Compiling ../../../../hls_source/ecg_trained_classifier.cpp in debug mode
+   Generating csim.exe
+=== ECG Classifier HLS Simulation Test ===
+Based on MIT-BIH database, Training accuracy: 99.08%
+Feature dimensions: 46 (36 db4 wavelet + 10 time domain)
+Output classes: 6 (N,L,R,A,V,F)
+
+Test Case 1: Normal beat features
+Predicted class: 5 (F)
+Probability distribution:
+  N: 7.9297
+  L: -26.4023
+  R: -32.2539
+  A: -28.1367
+  V: -42.3438
+  F: 13.0703
+
+Test Case 2: Ventricular arrhythmia features
+Predicted class: 5 (F)
+Probability distribution:
+  N: -4.7266
+  L: -31.0195
+  R: -82.4453
+  A: -28.3750
+  V: -56.6680
+  F: 20.6992
+
+Test Results:
+Test Case 1: PASSED
+Test Case 2: PASSED
+
+All tests passed! ECG classifier HLS implementation verified successfully!
+Real MIT-BIH trained model successfully converted to FPGA implementation
+INFO: [SIM 1] CSim done with 0 errors.
+INFO: [SIM 3] *************** CSIM finish ***************

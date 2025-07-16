@@ -1,0 +1,24 @@
+#-----------------------------------------------------------
+# Vivado v2024.1.2 (64-bit)
+# SW Build 5164865 on Thu Sep  5 14:37:11 MDT 2024
+# IP Build 5164407 on Fri Sep  6 08:18:11 MDT 2024
+# SharedData Build 5164864 on Thu Sep 05 13:09:09 MDT 2024
+# Start of session at: Wed Jul 16 22:39:02 2025
+# Process ID: 27724
+# Current directory: D:/Git/Project/FPGA/ecg_fpga_project/solution1/impl/ip
+# Command line: vivado.exe -notrace -mode batch -source run_ippack.tcl
+# Log file: D:/Git/Project/FPGA/ecg_fpga_project/solution1/impl/ip/vivado.log
+# Journal file: D:/Git/Project/FPGA/ecg_fpga_project/solution1/impl/ip\vivado.jou
+# Running On        :ËïÈð²©
+# Platform          :Windows Server 2016 or Windows 10
+# Operating System  :26100
+# Processor Detail  :13th Gen Intel(R) Core(TM) i9-13900HX
+# CPU Frequency     :2419 MHz
+# CPU Physical cores:24
+# CPU Logical cores :32
+# Host memory       :16978 MB
+# Swap memory       :31138 MB
+# Total Virtual     :48116 MB
+# Available Virtual :16355 MB
+#-----------------------------------------------------------
+source run_ippack.tcl -notrace

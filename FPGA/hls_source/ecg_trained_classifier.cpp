@@ -1,8 +1,9 @@
-// ECG分类器 - 基于真实MIT-BIH数据训练
-// 训练准确率: 0.9910
+// ECG Classifier - Based on real MIT-BIH training data
+// Training Accuracy: 0.9910
 #include "ap_int.h"
 #include "ap_fixed.h"
-#include <hls_math.h>
+#include "hls_math.h"
+#include "weights.h"  // Include trained weights
 
 #define INPUT_DIM 46
 #define HIDDEN1_DIM 128
@@ -13,15 +14,12 @@
 typedef ap_fixed<16, 8> fixed_t;
 typedef ap_fixed<32, 16> acc_t;
 
-// 训练得到的权重 (量化后)
-// 注意: 实际部署时需要包含完整的权重数据
-
-// ReLU激活函数
+// ReLU activation function
 fixed_t relu(fixed_t x) {
-    return (x > 0) ? x : 0;
+    return (x > fixed_t(0)) ? x : fixed_t(0);
 }
 
-// 主分类函数
+// Main classification function
 void ecg_classify_trained(
     fixed_t features[INPUT_DIM], 
     fixed_t probabilities[OUTPUT_DIM], 
@@ -32,90 +30,77 @@ void ecg_classify_trained(
     #pragma HLS INTERFACE m_axi port=predicted_class bundle=gmem2
     #pragma HLS INTERFACE s_axilite port=return
     
-    // 第一层
+    // First layer (46 -> 128)
     fixed_t hidden1[HIDDEN1_DIM];
     #pragma HLS ARRAY_PARTITION variable=hidden1 complete
     
     for(int i = 0; i < HIDDEN1_DIM; i++) {
         #pragma HLS UNROLL factor=4
-        acc_t sum = 0;  // bias会在实际部署时添加
+        acc_t sum = fixed_t(dense_biases[i]);  // Add bias
         
         for(int j = 0; j < INPUT_DIM; j++) {
             #pragma HLS PIPELINE
-            // sum += features[j] * weights1[j][i];  // 实际权重
-            sum += features[j] * 0.1;  // 占位符
+            sum += features[j] * fixed_t(dense_weights[j * HIDDEN1_DIM + i]);  // Correct weight access
         }
         
         hidden1[i] = relu(sum);
     }
     
-    // 第二层
+    // Second layer (128 -> 64)
     fixed_t hidden2[HIDDEN2_DIM];
     #pragma HLS ARRAY_PARTITION variable=hidden2 complete
     
     for(int i = 0; i < HIDDEN2_DIM; i++) {
         #pragma HLS UNROLL factor=4
-        acc_t sum = 0;
+        acc_t sum = fixed_t(dense_1_biases[i]);  // Add bias
         
         for(int j = 0; j < HIDDEN1_DIM; j++) {
             #pragma HLS PIPELINE
-            sum += hidden1[j] * 0.1;  // 占位符
+            sum += hidden1[j] * fixed_t(dense_1_weights[j * HIDDEN2_DIM + i]);  // Correct weight access
         }
         
         hidden2[i] = relu(sum);
     }
     
-    // 第三层
+    // Third layer (64 -> 32)
     fixed_t hidden3[HIDDEN3_DIM];
     #pragma HLS ARRAY_PARTITION variable=hidden3 complete
     
     for(int i = 0; i < HIDDEN3_DIM; i++) {
         #pragma HLS UNROLL factor=4
-        acc_t sum = 0;
+        acc_t sum = fixed_t(dense_2_biases[i]);  // Add bias
         
         for(int j = 0; j < HIDDEN2_DIM; j++) {
             #pragma HLS PIPELINE
-            sum += hidden2[j] * 0.1;  // 占位符
+            sum += hidden2[j] * fixed_t(dense_2_weights[j * HIDDEN3_DIM + i]);  // Correct weight access
         }
         
         hidden3[i] = relu(sum);
     }
     
-    // 输出层 (Softmax)
+    // Output layer (32 -> 6) - Simplified version without softmax
     fixed_t output[OUTPUT_DIM];
-    fixed_t max_val = -1000;
     
     for(int i = 0; i < OUTPUT_DIM; i++) {
         #pragma HLS UNROLL
-        acc_t sum = 0;
+        acc_t sum = fixed_t(dense_3_biases[i]);  // Add bias
         
         for(int j = 0; j < HIDDEN3_DIM; j++) {
             #pragma HLS PIPELINE
-            sum += hidden3[j] * 0.1;  // 占位符
+            sum += hidden3[j] * fixed_t(dense_3_weights[j * OUTPUT_DIM + i]);  // Correct weight access
         }
         
-        output[i] = sum;
-        if(output[i] > max_val) max_val = output[i];
+        output[i] = fixed_t(sum);
+        probabilities[i] = output[i];  // Use raw output as "probabilities"
     }
     
-    // 简化的Softmax
-    fixed_t sum_exp = 0;
-    for(int i = 0; i < OUTPUT_DIM; i++) {
-        probabilities[i] = hls::exp(output[i] - max_val);
-        sum_exp += probabilities[i];
-    }
-    
-    for(int i = 0; i < OUTPUT_DIM; i++) {
-        probabilities[i] = probabilities[i] / sum_exp;
-    }
-    
-    // 找出最大概率类别
-    fixed_t max_prob = probabilities[0];
+    // Find maximum value class
+    fixed_t max_val = probabilities[0];
     *predicted_class = 0;
     
     for(int i = 1; i < OUTPUT_DIM; i++) {
-        if(probabilities[i] > max_prob) {
-            max_prob = probabilities[i];
+        if(probabilities[i] > max_val) {
+            max_val = probabilities[i];
             *predicted_class = i;
         }
     }

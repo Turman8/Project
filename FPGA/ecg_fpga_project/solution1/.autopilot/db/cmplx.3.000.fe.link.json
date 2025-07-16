@@ -1,0 +1,35 @@
+{
+  "0": {
+    "basicblocks": 57,
+    "calls": "1 1 1",
+    "file": "ecg_trained_classifier.cpp",
+    "fileloc": 23,
+    "instructions": 346,
+    "loads": {
+      "G": 8,
+      "L": 5,
+      "T": 2
+    },
+    "name": "ecg_classify_trained",
+    "stores": {
+      "L": 6,
+      "T": 3
+    },
+    "total_instructions": 5714
+  },
+  "1": {
+    "basicblocks": 4,
+    "calls": "",
+    "file": "ecg_trained_classifier.cpp",
+    "fileloc": 18,
+    "instructions": 16,
+    "loads": {
+      "L": 1
+    },
+    "name": "relu",
+    "stores": {
+      "L": 1
+    },
+    "total_instructions": 126
+  }
+}

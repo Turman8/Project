@@ -1,0 +1,23 @@
+[
+  {
+    "functionLabel": "",
+    "functionName": "ecg_classify_trained",
+    "id": 0,
+    "ifcond": "",
+    "insert_position": "",
+    "label": "",
+    "pragma": {
+      "name": "TOP",
+      "option": [
+        {
+          "name": "name",
+          "value": "ecg_classify_trained"
+        }
+      ]
+    },
+    "slx": false,
+    "sourceFile": "D:/Git/Project/FPGA/scripts/run_hls.tcl",
+    "sourceLine": 37,
+    "success": true
+  }
+]
