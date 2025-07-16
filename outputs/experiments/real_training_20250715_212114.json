@@ -1,0 +1,22 @@
+{
+  "training_time": 28.870278358459473,
+  "total_beats": 21712,
+  "feature_dimensions": 46,
+  "training_accuracy": 0.9910200238227844,
+  "model_architecture": [
+    128,
+    64,
+    32,
+    6
+  ],
+  "data_source": "MIT-BIH Real Data",
+  "technology_stack": "Wavelet + CNN + Real Training",
+  "class_distribution": {
+    "0": 12210,
+    "1": 2491,
+    "2": 43,
+    "3": 682,
+    "4": 4,
+    "5": 6282
+  }
+}
