@@ -509,6 +509,137 @@ void ecg_classify_trained(
     print(f"   ✅ FPGA代码已生成到: {output_dir}")
     return model_info
 
+def export_weights_for_hls(model, output_path='FPGA/hls_source/weights.h'):
+    """
+    导出训练好的权重到HLS头文件格式
+    """
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    
+    with open(output_path, 'w') as f:
+        f.write("#ifndef WEIGHTS_H\n")
+        f.write("#define WEIGHTS_H\n\n")
+        f.write("// 训练好的神经网络权重和偏置\n")
+        f.write("// 精度: 16位定点数\n\n")
+        
+        # 获取所有层的权重
+        for i, layer in enumerate(model.layers):
+            if hasattr(layer, 'get_weights') and layer.get_weights():
+                weights = layer.get_weights()
+                layer_name = layer.name.replace('/', '_').replace('-', '_')
+                
+                # 权重矩阵
+                if len(weights) > 0:
+                    w = weights[0]
+                    f.write(f"// Layer {i+1}: {layer_name} weights\n")
+                    f.write(f"const float {layer_name}_weights[{w.size}] = {{\n")
+                    
+                    # 展平权重并写入
+                    w_flat = w.flatten()
+                    for j, val in enumerate(w_flat):
+                        if j % 8 == 0:
+                            f.write("    ")
+                        f.write(f"{val:.6f}f")
+                        if j < len(w_flat) - 1:
+                            f.write(", ")
+                        if (j + 1) % 8 == 0 or j == len(w_flat) - 1:
+                            f.write("\n")
+                    f.write("};\n\n")
+                    
+                    # 权重维度信息
+                    f.write(f"const int {layer_name}_weights_rows = {w.shape[0]};\n")
+                    f.write(f"const int {layer_name}_weights_cols = {w.shape[1] if len(w.shape) > 1 else 1};\n\n")
+                
+                # 偏置向量
+                if len(weights) > 1:
+                    b = weights[1]
+                    f.write(f"// Layer {i+1}: {layer_name} biases\n")
+                    f.write(f"const float {layer_name}_biases[{b.size}] = {{\n")
+                    
+                    for j, val in enumerate(b):
+                        if j % 8 == 0:
+                            f.write("    ")
+                        f.write(f"{val:.6f}f")
+                        if j < len(b) - 1:
+                            f.write(", ")
+                        if (j + 1) % 8 == 0 or j == len(b) - 1:
+                            f.write("\n")
+                    f.write("};\n\n")
+        
+        f.write("#endif // WEIGHTS_H\n")
+    
+    print(f"✅ 权重已导出到: {output_path}")
+    return output_path
+
+def create_fpga_deployment_package(model, feature_scaler, timestamp):
+    """
+    创建完整的FPGA部署包
+    """
+    print("\n🔧 创建FPGA部署包...")
+    
+    # 创建输出目录
+    output_dir = f"outputs/fpga_deployment_{timestamp}"
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # 1. 导出权重
+    weights_file = export_weights_for_hls(model, f"{output_dir}/weights.h")
+    
+    # 2. 导出标准化参数
+    scaler_params_file = f"{output_dir}/scaler_params.h"
+    with open(scaler_params_file, 'w') as f:
+        f.write("#ifndef SCALER_PARAMS_H\n")
+        f.write("#define SCALER_PARAMS_H\n\n")
+        f.write("// 特征标准化参数\n")
+        f.write(f"const int FEATURE_DIM = {len(feature_scaler.mean_)};\n\n")
+        
+        # 均值
+        f.write("const float feature_mean[FEATURE_DIM] = {\n")
+        for i, val in enumerate(feature_scaler.mean_):
+            if i % 4 == 0:
+                f.write("    ")
+            f.write(f"{val:.6f}f")
+            if i < len(feature_scaler.mean_) - 1:
+                f.write(", ")
+            if (i + 1) % 4 == 0 or i == len(feature_scaler.mean_) - 1:
+                f.write("\n")
+        f.write("};\n\n")
+        
+        # 标准差
+        f.write("const float feature_std[FEATURE_DIM] = {\n")
+        for i, val in enumerate(feature_scaler.scale_):
+            if i % 4 == 0:
+                f.write("    ")
+            f.write(f"{val:.6f}f")
+            if i < len(feature_scaler.scale_) - 1:
+                f.write(", ")
+            if (i + 1) % 4 == 0 or i == len(feature_scaler.scale_) - 1:
+                f.write("\n")
+        f.write("};\n\n")
+        f.write("#endif // SCALER_PARAMS_H\n")
+    
+    # 3. 创建部署说明文档
+    readme_file = f"{output_dir}/FPGA_DEPLOYMENT_README.md"
+    with open(readme_file, 'w', encoding='utf-8') as f:
+        f.write("# ECG分类器FPGA部署指南\n\n")
+        f.write("## 模型信息\n")
+        f.write(f"- 训练时间: {timestamp}\n")
+        f.write(f"- 输入维度: 46 (36小波特征 + 10时域特征)\n")
+        f.write(f"- 输出类别: 6类心拍类型\n")
+        f.write(f"- 数据类型: 16位定点数\n\n")
+        
+        f.write("## 文件说明\n")
+        f.write("- `weights.h`: 神经网络权重和偏置\n")
+        f.write("- `scaler_params.h`: 特征标准化参数\n")
+        f.write("- 使用Vitis HLS 2024.1进行综合\n\n")
+        
+        f.write("## 部署步骤\n")
+        f.write("1. 将weights.h和scaler_params.h复制到HLS项目\n")
+        f.write("2. 更新ecg_trained_classifier.cpp中的权重引用\n")
+        f.write("3. 运行HLS综合和导出IP\n")
+        f.write("4. 在Vivado中集成IP核\n")
+    
+    print(f"✅ FPGA部署包已创建: {output_dir}")
+    return output_dir
+
 def main():
     """主程序 - 使用真实数据训练"""
     start_time = time.time()
@@ -562,6 +693,9 @@ def main():
         # 保存模型
         model.save(f'outputs/trained_ecg_model_{timestamp}.h5')
         
+        # 创建FPGA部署包
+        fpga_output_dir = create_fpga_deployment_package(model, scaler, timestamp)
+        
         print("\n" + "=" * 70)
         print("✅ 基于真实MIT-BIH数据的训练完成！")
         print(f"📊 数据源: MIT-BIH心律失常数据库")
@@ -569,7 +703,7 @@ def main():
         print(f"🔧 特征维度: {features.shape[1]}")
         print(f"🧠 训练准确率: {test_accuracy:.4f}")
         print(f"⏱️  总训练时间: {results['training_time']:.1f} 秒")
-        print(f"📁 FPGA代码: outputs/fpga_deployment/")
+        print(f"📁 FPGA部署包: {fpga_output_dir}")
         print(f"💾 模型文件: outputs/trained_ecg_model_{timestamp}.h5")
         print("🎯 真实数据训练完成，准确率可靠，FPGA就绪！")
         

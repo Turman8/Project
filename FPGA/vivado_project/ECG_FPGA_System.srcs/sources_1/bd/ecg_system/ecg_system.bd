@@ -1,0 +1,13 @@
+{
+  "design": {
+    "design_info": {
+      "boundary_crc": "0x0",
+      "gen_directory": "../../../../ECG_FPGA_System.gen/sources_1/bd/ecg_system",
+      "name": "ecg_system",
+      "rev_ctrl_bd_flag": "RevCtrlBdOff",
+      "synth_flow_mode": "Hierarchical",
+      "tool_version": "2024.1.2"
+    },
+    "design_tree": {}
+  }
+}
