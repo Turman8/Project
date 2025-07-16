@@ -1,6 +1,6 @@
 {
   "model_type": "CNN (Trained on MIT-BIH)",
-  "training_accuracy": 0.9907897710800171,
+  "training_accuracy": 0.9910200238227844,
   "input_features": 46,
   "layer_architecture": [
     128,
