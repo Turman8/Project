@@ -1,0 +1,43 @@
+{
+  "timestamp": "2025-07-18T01:17:47.960796",
+  "file_integrity": {
+    "main.py": {
+      "status": "✅ 存在",
+      "size": "26100 bytes",
+      "hash": "325d17f8d171533320bf56411a4be91b",
+      "description": "ECG主程序"
+    },
+    "FPGA/hls_source/classifier.cpp": {
+      "status": "✅ 存在",
+      "size": "3270 bytes",
+      "hash": "45500ae9ee2f4bd212a2a60c74287d2d",
+      "description": "FPGA分类器源码"
+    },
+    "FPGA/hls_source/weights.h": {
+      "status": "✅ 存在",
+      "size": "204671 bytes",
+      "hash": "ddf3465dd089c4066a4ddcd77c565aa8",
+      "description": "神经网络权重"
+    },
+    "PROJECT_REPORT.md": {
+      "status": "✅ 存在",
+      "size": "11422 bytes",
+      "hash": "d3a182b71c18e18a783e163940090244",
+      "description": "项目报告"
+    },
+    "export_weights.py": {
+      "status": "✅ 存在",
+      "size": "4388 bytes",
+      "hash": "caa04f3ad47f5d1f99b23f298e51647a",
+      "description": "权重导出工具"
+    },
+    ".gitignore": {
+      "status": "✅ 存在",
+      "size": "1767 bytes",
+      "hash": "6939a0cd5f6002def890caa60ba34108",
+      "description": "Git忽略规则"
+    }
+  },
+  "data_integrity": true,
+  "git_status": true
+}
