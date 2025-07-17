@@ -1,8 +1,8 @@
 #ifndef WEIGHTS_H
 #define WEIGHTS_H
 
-// ÑµÁ·ºÃµÄÉñ¾­ÍøÂçÈ¨ÖØºÍÆ«ÖÃ
-// ¾«¶È: 32Î»¸¡µãÊı (ºóĞø¿ÉÁ¿»¯Îª16Î»¶¨µã)
+// Ñµï¿½ï¿½ï¿½Ãµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È¨ï¿½Øºï¿½Æ«ï¿½ï¿½
+// ï¿½ï¿½ï¿½ï¿½: 32Î»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ (ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Îª16Î»ï¿½ï¿½ï¿½ï¿½)
 
 // Layer 1: dense weights [(46, 128)]
 const float dense_weights[5888] = {
@@ -744,8 +744,8 @@ const float dense_weights[5888] = {
     -0.146664f, 0.119406f, 0.122675f, -0.091728f, -0.015441f, 0.240633f, 0.175312f, 0.096627f
 };
 
-const int dense_weights_rows = 46;
-const int dense_weights_cols = 128;
+#define DENSE_WEIGHTS_ROWS 46
+#define DENSE_WEIGHTS_COLS 128
 
 // Layer 1: dense biases [(128,)]
 const float dense_biases[128] = {
@@ -2117,9 +2117,9 @@ const float dense_3_biases[6] = {
     0.775245f, -0.239256f, -1.083449f, 0.231781f, -0.124164f, -0.534808f
 };
 
-// ÍøÂç½á¹¹ĞÅÏ¢
-const int INPUT_DIM = 46;  // ÊäÈëÌØÕ÷Î¬¶È
-const int OUTPUT_DIM = 6;  // Êä³öÀà±ğÊı
+// ç½‘ç»œç»“æ„ä¿¡æ¯
+// const int INPUT_DIM = 46;  // è¾“å…¥å±‚ç»´åº¦ (defined in classifier.h)
+// const int OUTPUT_DIM = 6;  // è¾“å‡ºç»´åº¦ (defined in classifier.h)
 const int NUM_LAYERS = 4;
 
 #endif // WEIGHTS_H
