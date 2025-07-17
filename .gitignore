@@ -1,0 +1,103 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# VS Code
+.vscode/launch.json
+.vscode/tasks.json
+.vscode/c_cpp_properties.json
+Untitled-*
+
+# Vivado/HLS - 扩展规则
+*.jou
+*.log
+*.str
+webtalk*
+*backup*
+create_*.tcl
+*build*.tcl
+*deploy*.tcl
+*test*.tcl
+*synthesize*.tcl
+rebuild_*.tcl
+simple_*.tcl
+vivado_*.tcl
+fpga_*.tcl
+hls_*.tcl
+test_*.tcl
+
+# PowerShell脚本
+*.ps1
+build_*.ps1
+deploy_*.ps1
+cleanup_*.ps1
+safe_*.ps1
+
+# 配置和分析文件
+*.txt
+*分析*.md
+hls_*_config.txt
+
+# Temporary files
+*.tmp
+*.temp
+*~
+.DS_Store
+Thumbs.db
+
+# Output files that change frequently
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+
+# Backup files
+*backup*
+*.bak
+*.old
+
+# Test files
+test.py
+module_test.py
+ecg_*.py
+!main.py
+!export_weights.py
+
+# Documentation that changes frequently
+CLEANUP_REPORT.md
+TODAY_SUMMARY.md
+CLEANUP_COMPLETE.md
+
+# ECG相关临时文件
+ecg_cnn_model.py
+ecg_feature_*.py
+ecg_filter.py
+ecg_main.py
+ecg_normalize.py
+ecg_preprocess.py
+ecg_segmenter.py
+ecg_visualizer.py
+ecg_wavelet_*.py
+extract_*.py
+signal_read.py
