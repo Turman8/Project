@@ -101,3 +101,27 @@ ecg_visualizer.py
 ecg_wavelet_*.py
 extract_*.py
 signal_read.py
+
+# HLS/Vivado 生成文件 - 完全排除大文件
+FPGA/hls_project/solution1/impl/
+FPGA/hls_project/solution1/syn/
+FPGA/hls_project/solution1/csim/
+FPGA/hls_project/solution1/*.log
+FPGA/hls_project/solution1/*.jou
+FPGA/hls_project/*.app
+FPGA/vivado_project/
+FPGA/*.log
+FPGA/*.jou
+FPGA/*.str
+FPGA/webtalk*
+FPGA/*backup*
+
+# 大型HDL生成文件
+*.zip
+FPGA/**/*.vhd
+FPGA/**/*.v
+FPGA/**/*.dat
+
+# 保留核心源码但排除生成文件
+!FPGA/hls_source/
+!FPGA/testbench/
