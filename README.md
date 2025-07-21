@@ -29,7 +29,7 @@
 ### 阶段一: 算法开发与验证 ✅
 ```mermaid
 graph LR
-A[MIT-BIH数据] → B[小波特征提取] → C[神经网络训练] → D[Python模型验证]
+    A[MIT-BIH Data] --> B[Wavelet Features] --> C[Neural Network Training] --> D[Python Model Validation]
 ```
 - **数据源**: MIT-BIH Arrhythmia Database (48个记录)
 - **特征提取**: db4小波36维 + 时域统计10维 = 46维特征向量
@@ -39,7 +39,7 @@ A[MIT-BIH数据] → B[小波特征提取] → C[神经网络训练] → D[Pytho
 ### 阶段二: 硬件适配设计 🔄
 ```mermaid
 graph LR
-E[Python模型] → F[权重提取] → G[定点化转换] → H[HLS C++实现]
+    E[Python Model] --> F[Weight Extraction] --> G[Fixed Point Conversion] --> H[HLS C++ Implementation]
 ```
 - **核心挑战**: 浮点到定点的精度保持
 - **设计策略**: 16位定点数 (Q8.8格式)
@@ -49,7 +49,7 @@ E[Python模型] → F[权重提取] → G[定点化转换] → H[HLS C++实现]
 ### 阶段三: FPGA集成部署 ⏳
 ```mermaid
 graph LR
-I[HLS IP核] → J[Vivado集成] → K[系统仿真] → L[硬件验证]
+    I[HLS IP Core] --> J[Vivado Integration] --> K[System Simulation] --> L[Hardware Validation]
 ```
 
 ## 🏗️ 项目技术架构
@@ -79,14 +79,14 @@ FPGA/
 ### 数据流向
 ```mermaid
 graph TD
-A[MIT-BIH原始数据] → B[Python预处理]
-B → C[特征提取46维]
-C → D[神经网络训练]
-D → E[模型权重]
-E → F[量化转换]
-F → G[HLS C++实现]
-G → H[IP核生成]
-H → I[FPGA部署]
+    A[MIT-BIH Raw Data] --> B[Python Preprocessing]
+    B --> C[Feature Extraction 46D]
+    C --> D[Neural Network Training]
+    D --> E[Model Weights]
+    E --> F[Quantization Conversion]
+    F --> G[HLS C++ Implementation]
+    G --> H[IP Core Generation]
+    H --> I[FPGA Deployment]
 ```
 
 ## 🎨 技术特点与创新
