@@ -52,7 +52,7 @@ graph LR
 I[HLS IP核] → J[Vivado集成] → K[系统仿真] → L[硬件验证]
 ```
 
-## �️ 项目技术架构
+## 🏗️ 项目技术架构
 
 ### 软件层 (Python)
 ```
@@ -89,7 +89,7 @@ G → H[IP核生成]
 H → I[FPGA部署]
 ```
 
-## �🎨 技术特点与创新
+## 🎨 技术特点与创新
 
 ### 算法层面
 - **高精度分类**: 基于真实MIT-BIH数据训练
@@ -233,7 +233,7 @@ vitis_hls -f run_csim.tcl
 - [ ] 与软件实现的精度对比
 - [ ] 文档完善与开源发布
 
-## � 项目文件说明
+## 📚 项目文件说明
 
 ### 核心Python文件
 - `main.py`: 完整的ECG分类系统主程序 (717行)
@@ -359,7 +359,7 @@ data_t relu_fixed(acc_t x) {
 - "FPGA Implementation of Real-time ECG Signal Processing"
 - Xilinx UG902: Vivado Design Suite User Guide
 
-## �📜 许可证
+## 📜 许可证
 
 本项目采用 MIT 许可证 - 详见LICENSE文件
 
