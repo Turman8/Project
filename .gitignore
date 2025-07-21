@@ -16,112 +16,74 @@ parts/
 sdist/
 var/
 wheels/
-share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-MANIFEST
 
-# VS Code
-.vscode/launch.json
-.vscode/tasks.json
-.vscode/c_cpp_properties.json
-Untitled-*
+# Jupyter Notebook
+.ipynb_checkpoints
 
-# Vivado/HLS - 扩展规则
-*.jou
+# pyenv
+.python-version
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Vivado/Vitis生成文件
+*.xpr
+*.cache/
+*.runs/
+*.sim/
+*.srcs/
+*.gen/
+*.hw/
+*.ip_user_files/
 *.log
+*.jou
+*.rpt
+*.dcp
+*.bit
 *.str
-webtalk*
-*backup*
-create_*.tcl
-*build*.tcl
-*deploy*.tcl
-*test*.tcl
-*synthesize*.tcl
-rebuild_*.tcl
-simple_*.tcl
-vivado_*.tcl
-fpga_*.tcl
-hls_*.tcl
-test_*.tcl
+*.wcfg
+.Xil/
+vivado*.backup.*
+vitis*.backup.*
 
-# PowerShell脚本
-*.ps1
-build_*.ps1
-deploy_*.ps1
-cleanup_*.ps1
-safe_*.ps1
+# HLS生成文件  
+solution*/
+csim/
+*.aps
+*.directive
+*_data.json
+hls.app
 
-# 配置和分析文件
-*.txt
-*分析*.md
-hls_*_config.txt
+# 大数据文件
+*.dat
+*.atr
+*.hea
+*.xws
+*.at_
+*.at-
 
-# Temporary files
-*.tmp
-*.temp
-*~
+# 系统文件
 .DS_Store
 Thumbs.db
+*.swp
+*.swo
+*~
 
-# Output files that change frequently
-*.png
-*.jpg
-*.jpeg
-*.gif
-*.svg
-
-# Backup files
-*backup*
+# 临时文件
+*.tmp
+*.temp
 *.bak
-*.old
 
-# Test files
-test.py
-module_test.py
-ecg_*.py
-!main.py
-!export_weights.py
-
-# Documentation that changes frequently
-CLEANUP_REPORT.md
-TODAY_SUMMARY.md
-CLEANUP_COMPLETE.md
-
-# ECG相关临时文件
-ecg_cnn_model.py
-ecg_feature_*.py
-ecg_filter.py
-ecg_main.py
-ecg_normalize.py
-ecg_preprocess.py
-ecg_segmenter.py
-ecg_visualizer.py
-ecg_wavelet_*.py
-extract_*.py
-signal_read.py
-
-# HLS/Vivado 生成文件 - 完全排除大文件
-FPGA/hls_project/solution1/impl/
-FPGA/hls_project/solution1/syn/
-FPGA/hls_project/solution1/csim/
-FPGA/hls_project/solution1/*.log
-FPGA/hls_project/solution1/*.jou
-FPGA/hls_project/*.app
-FPGA/vivado_project/
-FPGA/*.log
-FPGA/*.jou
-FPGA/*.str
-FPGA/webtalk*
-FPGA/*backup*
-
-# 大型HDL生成文件
-*.zip
-FPGA/**/*.vhd
-FPGA/**/*.v
-FPGA/**/*.dat
-
-# 保留核心源码但排除生成文件
-!FPGA/hls_source/
-!FPGA/testbench/
+# VS Code
+.vscode/settings.json
+.vscode/tasks.json
+.vscode/launch.json
