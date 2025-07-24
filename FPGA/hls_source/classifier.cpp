@@ -6,10 +6,11 @@
 // 定点数定义：Q8.8格式 (16位，8位整数，8位小数)
 typedef ap_fixed<16, 8> fixed_t;
 
-// 定点数乘法函数
+// 定点数乘法函数 - 避免除法运算符歧义
 inline fixed_t fixed_mult(fixed_t a, weight_t b) {
     #pragma HLS INLINE
-    return a * fixed_t(b) / 256.0f;  // Q8.8 格式调整
+    // 直接使用位移运算，等价于除以256
+    return a * fixed_t(b) >> 8;
 }
 
 // ReLU激活函数
@@ -36,20 +37,20 @@ void ecg_classifier(
     #pragma HLS ARRAY_PARTITION variable=buffer_c cyclic factor=2 dim=1
     
     // 权重分割优化
-    #pragma HLS ARRAY_PARTITION variable=dense_0_weights cyclic factor=2 dim=1
-    #pragma HLS ARRAY_PARTITION variable=dense_1_weights cyclic factor=2 dim=1
-    #pragma HLS ARRAY_PARTITION variable=dense_2_weights cyclic factor=2 dim=1
-    #pragma HLS ARRAY_PARTITION variable=dense_3_weights cyclic factor=2 dim=1
+    #pragma HLS ARRAY_PARTITION variable=layer1_weights cyclic factor=2 dim=1
+    #pragma HLS ARRAY_PARTITION variable=layer2_weights cyclic factor=2 dim=1
+    #pragma HLS ARRAY_PARTITION variable=layer3_weights cyclic factor=2 dim=1
+    #pragma HLS ARRAY_PARTITION variable=layer4_weights cyclic factor=2 dim=1
 
     // 第一层：46 -> 128 (保持相对高效)
     LAYER1: for (int i = 0; i < 128; i++) {
         #pragma HLS PIPELINE II=4
         
-        fixed_t sum = fixed_t(dense_0_bias[i]) / 256.0f;
+        fixed_t sum = fixed_t(layer1_biases[i]) >> 8;  // 位移运算避免除法歧义
         
         LAYER1_MAC: for (int j = 0; j < 46; j++) {
             #pragma HLS UNROLL factor=2
-            sum += fixed_mult(input[j], dense_0_weights[i * 46 + j]);
+            sum += fixed_mult(input[j], layer1_weights[i * 46 + j]);
         }
         
         buffer_a[i] = relu(sum);
@@ -59,11 +60,11 @@ void ecg_classifier(
     LAYER2: for (int i = 0; i < 64; i++) {
         #pragma HLS PIPELINE II=10  // 从6增加到10，大幅减少DSP
         
-        fixed_t sum = fixed_t(dense_1_bias[i]) / 256.0f;
+        fixed_t sum = fixed_t(layer2_biases[i]) >> 8;  // 位移运算避免除法歧义
         
         LAYER2_MAC: for (int j = 0; j < 128; j++) {
             #pragma HLS UNROLL factor=2  // 从4降到2
-            sum += fixed_mult(buffer_a[j], dense_1_weights[i * 128 + j]);
+            sum += fixed_mult(buffer_a[j], layer2_weights[i * 128 + j]);
         }
         
         buffer_b[i] = relu(sum);
@@ -73,11 +74,11 @@ void ecg_classifier(
     LAYER3: for (int i = 0; i < 32; i++) {
         #pragma HLS PIPELINE II=6  // 从4增加到6
         
-        fixed_t sum = fixed_t(dense_2_bias[i]) / 256.0f;
+        fixed_t sum = fixed_t(layer3_biases[i]) >> 8;  // 位移运算避免除法歧义
         
         LAYER3_MAC: for (int j = 0; j < 64; j++) {
             #pragma HLS UNROLL factor=2  // 保持为2
-            sum += fixed_mult(buffer_b[j], dense_2_weights[i * 64 + j]);
+            sum += fixed_mult(buffer_b[j], layer3_weights[i * 64 + j]);
         }
         
         buffer_c[i] = relu(sum);
@@ -87,11 +88,11 @@ void ecg_classifier(
     LAYER4: for (int i = 0; i < 6; i++) {
         #pragma HLS PIPELINE II=3  // 从2增加到3
         
-        fixed_t sum = fixed_t(dense_3_bias[i]) / 256.0f;
+        fixed_t sum = fixed_t(layer4_biases[i]) >> 8;  // 位移运算避免除法歧义
         
         LAYER4_MAC: for (int j = 0; j < 32; j++) {
             #pragma HLS UNROLL factor=4  // 从8降到4
-            sum += fixed_mult(buffer_c[j], dense_3_weights[i * 32 + j]);
+            sum += fixed_mult(buffer_c[j], layer4_weights[i * 32 + j]);
         }
         
         output[i] = sum;  // 输出层不需要ReLU
