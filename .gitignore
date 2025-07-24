@@ -87,3 +87,27 @@ Thumbs.db
 .vscode/settings.json
 .vscode/tasks.json
 .vscode/launch.json
+
+# 项目清理文件
+*cleanup*.py
+*cleanup*.sh
+*cleanup*.bat
+safety_report_*.json
+
+# 临时实验文件
+*_manual_*.cpp
+*_manual_*.h
+*_experimental*.cpp
+*_experimental*.h
+*_test_*.cpp
+*_test_*.h
+tb_*.cpp
+testbench_*.cpp
+
+# 旧版本文件
+*.old
+*.backup
+*_v1.*
+*_v2.*
+*_v3.*
+*_old.*
