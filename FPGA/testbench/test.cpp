@@ -8,10 +8,10 @@ typedef ap_fixed<16, 8> fixed_t;
 void ecg_classifier(fixed_t input[46], fixed_t output[6]);
 
 int main() {
-    std::cout << "=== ECG 分类器测试 ===" << std::endl;
-    std::cout << "架构: 46->128->64->32->6" << std::endl;
-    std::cout << "精度: Q8.8 定点" << std::endl;
-    std::cout << "目标: DSP < 180, 延迟 < 1500 cycles" << std::endl;
+    std::cout << "=== ECG分类器定点数测试 ===" << std::endl;
+    std::cout << "架构: 46->128->64->32->6 (MIT-BIH训练)" << std::endl;
+    std::cout << "精度: Q8.8定点数 (16位)" << std::endl;
+    std::cout << "目标: DSP<180, 延迟<1500周期, 99%+准确率" << std::endl;
     std::cout << std::endl;
 
     // 测试输入数据
@@ -28,8 +28,10 @@ int main() {
         std::cout << input[i].to_double() << " ";
     }
     std::cout << "..." << std::endl;
+    std::cout << std::endl;
     
     // 执行分类
+    std::cout << "执行定点数分类..." << std::endl;
     ecg_classifier(input, output);
     
     // 显示结果
@@ -51,7 +53,7 @@ int main() {
     
     std::cout << std::endl;
     std::cout << "预测类别: " << classes[max_idx] << " (置信度: " << max_val << ")" << std::endl;
-    std::cout << "测试通过!" << std::endl;
+    std::cout << "定点数测试完成!" << std::endl;
     
     return 0;
 }

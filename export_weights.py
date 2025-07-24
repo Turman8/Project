@@ -89,11 +89,15 @@ def main():
     model_files = []
     if os.path.exists('outputs'):
         for file in os.listdir('outputs'):
-            if file.startswith('trained_ecg_model_') and file.endswith('.h5'):
+            if (file.startswith('trained_ecg_model_') and file.endswith('.h5')) or file == 'final_model.h5':
                 model_files.append(os.path.join('outputs', file))
     
     if not model_files:
         print("❌ 未找到训练好的模型文件")
+        print("📁 当前outputs目录内容:")
+        if os.path.exists('outputs'):
+            for file in os.listdir('outputs'):
+                print(f"   - {file}")
         return
     
     # 使用最新的模型文件
