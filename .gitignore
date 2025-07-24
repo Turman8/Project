@@ -1,3 +1,9 @@
+# HLS自动生成的文件和目录
+FPGA/ecg_classifier_project/
+FPGA/vitis_hls.log
+FPGA/*.jou
+FPGA/*.log
+
 # Python
 __pycache__/
 *.py[cod]

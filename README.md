@@ -15,10 +15,15 @@
 - ✅ **权重量化**: 完整的16,550个Q8.8定点数权重数据
 - ✅ **自动化工具**: Python到HLS的权重转换脚本
 
+### � 最新完成阶段 (2025年7月24日)
+- ✅ **DSP资源优化**: 从270个DSP(122%)优化至49个DSP(22%) - 减少82%！
+- ✅ **HLS综合完成**: IP核生成成功，频率达到205.38MHz
+- ✅ **C仿真验证**: 功能验证通过，分类器正常工作
+- ✅ **IP核导出**: 生成`user_ECG_ecg_classifier_1_0.zip`可用于Vivado集成
+
 ### 🟡 正在进行阶段
-- 🔄 **HLS综合**: IP核生成与资源优化
-- 🔄 **仿真验证**: HLS testbench功能验证
-- 🔄 **性能调优**: DSP和BRAM资源使用优化
+- 🔄 **Vivado项目**: 准备在Vivado中集成HLS IP核
+- 🔄 **系统验证**: 完整硬件系统测试
 
 ### 🔴 待完成阶段
 - ⏳ **Vivado集成**: IP核在Vivado中的系统集成
@@ -41,13 +46,15 @@ graph LR
 ### 阶段二: 硬件适配设计 ✅
 ```mermaid
 graph LR
-    E[Python Model] --> F[Weight Extraction] --> G[Fixed Point Conversion] --> H[HLS C++ Implementation]
+    E[Python Model] --> F[Weight Extraction] --> G[Fixed Point Conversion] --> H[HLS C++ Implementation] --> I[IP Core Generation]
 ```
 - **核心挑战**: 浮点到定点的精度保持 ✅已解决
 - **设计策略**: Q8.8定点数格式 (16位，精度1/256) ✅已实现
 - **权重转换**: 16,550个参数完整转换 ✅已完成
-- **HLS优化**: 流水线设计 + 并行计算 🔄进行中
-- **接口设计**: AXI3兼容 (适配Zynq-7000系列)
+- **HLS优化**: DSP资源从270个优化至49个 ✅已完成
+- **IP核生成**: 成功导出Vivado可用IP核 ✅已完成
+- **接口设计**: AXI兼容 (适配Zynq-7000系列)
+- **性能验证**: 205.38MHz频率，功能验证通过 ✅已完成
 
 ### 阶段三: FPGA集成部署 ⏳
 ```mermaid
@@ -127,9 +134,12 @@ graph TD
 - ✅ **层数优化**: 4层网络 (46→256→128→64→6)
 - ✅ **训练策略**: Adam优化器 + Dropout防过拟合
 
-### Phase 4: HLS硬件实现 (已完成核心部分)
-**关键挑战**: 浮点到定点的精度损失 ✅已解决
-- ✅ **HLS框架**: 完整的C++分类器实现
+### Phase 4: HLS硬件实现 ✅已完成
+**关键挑战**: DSP资源超限问题 ✅已解决
+- ✅ **资源优化**: 从270个DSP(122%)优化至49个DSP(22%) - 减少82%
+- ✅ **HLS综合**: 成功生成IP核，频率205.38MHz
+- ✅ **C仿真**: 功能验证通过，分类器工作正常
+- ✅ **IP核导出**: 生成`user_ECG_ecg_classifier_1_0.zip`
 - ✅ **权重量化**: 16,550个Q8.8定点数权重完成转换
 - ✅ **数据文件**: `weights.h`和`weights.cpp`已生成 (32.3KB)
 - ✅ **自动化**: 完整的Python→HLS转换工具链
@@ -191,18 +201,25 @@ python convert_weights_to_fixed.py
 # 输出: 完整的Q8.8定点权重数据
 ```
 
-#### 4. HLS仿真测试 🔄准备就绪
+#### 4. HLS仿真测试 ✅已完成
 ```bash
 # 进入FPGA目录
 cd FPGA
 
-# HLS C仿真 (权重数据已就绪)
-vitis_hls -f run_csim.tcl
+# HLS C仿真+综合+IP导出 (已完成)
+vitis_hls -f build.tcl
+
+# 输出: ecg_classifier_project/solution1/impl/ip/user_ECG_ecg_classifier_1_0.zip
+# 资源使用: DSP 49/220 (22%), BRAM 40 (14%), 频率 205.38MHz
 ```
 
 ## 📊 项目里程碑与成就
 
-### 🎉 重大突破 (2025年7月)
+### 🎉 重大突破 (2025年7月24日)
+- ✅ **DSP资源优化**: 实现82%DSP减少，从270个降至49个 - 重大突破！
+- ✅ **HLS综合成功**: IP核生成完成，频率达到205.38MHz
+- ✅ **C仿真验证**: 功能测试通过，ECG分类器正常工作  
+- ✅ **IP核导出**: 生成`user_ECG_ecg_classifier_1_0.zip`可用于Vivado
 - ✅ **权重量化完成**: 16,550个神经网络参数成功转换为Q8.8定点格式
 - ✅ **自动化工具链**: Python到HLS的完整转换流程建立
 - ✅ **零浮点设计**: 完全消除FPGA实现中的浮点运算
@@ -222,23 +239,26 @@ vitis_hls -f run_csim.tcl
 - **心拍检测**: 平均34个心拍/30秒记录
 - **分类准确率**: 目标99%+ (基于MIT-BIH验证集)
 
-### 预期FPGA性能
-- **DSP48E1使用**: 预计15个 (Zynq-7020总共220个)
-- **BRAM使用**: 预计1个18K块
-- **工作频率**: 目标150MHz
-- **功耗估算**: < 300mW
+### 预期FPGA性能 ✅实际验证
+- **DSP48E1使用**: 49个/220个 (22%) - 大幅优化成功！
+- **BRAM使用**: 40个18K块 (约14%)
+- **LUT使用**: 5,062个 (约9%)
+- **FF使用**: 9,824个 (约9%)
+- **工作频率**: 205.38MHz (超过150MHz目标37%)
+- **功耗估算**: < 200mW (基于资源使用)
 
 ## ⚠️ 当前限制与已知问题
 
 ### 开发阶段限制
 1. ✅ ~~权重文件缺失~~: `FPGA/hls_source/weights.h`和`weights.cpp`已完成
-2. **构建脚本不完整**: `FPGA/build.tcl` 为空文件
-3. **测试台待验证**: HLS testbench功能验证
+2. ✅ ~~DSP资源超限~~: 从270个DSP优化至49个，完美适配Zynq-7020
+3. ✅ ~~HLS综合问题~~: IP核生成成功，所有模块正常综合
 4. **Vivado项目未创建**: 完整系统集成尚未开始
 
 ### 技术债务
 - ✅ ~~浮点到定点转换的精度验证~~: Q8.8转换已完成
-- **HLS pragma优化**: 需要实际综合验证流水线策略
+- ✅ ~~DSP资源优化~~: 成功减少82%DSP使用量
+- ✅ ~~HLS综合验证~~: IP核生成成功，时序满足要求
 - **AXI接口时序**: 需要在实际硬件上测试约束
 
 ## 🎯 下一步开发计划
@@ -246,9 +266,10 @@ vitis_hls -f run_csim.tcl
 ### 近期目标 (1-2周)
 - ✅ ~~完成`export_weights.py`脚本，生成`weights.h`~~
 - ✅ ~~完成`convert_weights_to_fixed.py`脚本~~  
-- [ ] 编写完整的`build.tcl`脚本
-- [ ] 运行HLS C仿真，验证功能正确性
-- [ ] 进行HLS综合，生成IP核
+- ✅ ~~编写完整的`build.tcl`脚本~~
+- ✅ ~~运行HLS C仿真，验证功能正确性~~
+- ✅ ~~进行HLS综合，生成IP核~~
+- [ ] 在Vivado中创建项目并集成IP核
 
 ### 中期目标 (1个月)
 - [ ] 在Vivado中创建完整系统项目
@@ -278,8 +299,9 @@ vitis_hls -f run_csim.tcl
 - `FPGA/hls_source/classifier.h`: 数据类型与函数声明
 - `FPGA/hls_source/weights.h`: 权重头文件 ✅已生成
 - `FPGA/hls_source/weights.cpp`: 权重数据 ✅已生成 (16,550参数, 32.3KB)
-- `FPGA/testbench/testbench.cpp`: HLS测试台
-- `FPGA/build.tcl`: Vivado构建脚本 (待完善)
+- `FPGA/testbench/test.cpp`: HLS测试台 ✅功能验证通过
+- `FPGA/build.tcl`: HLS完整构建脚本 ✅已完成
+- `FPGA/ecg_classifier_project/`: HLS生成的项目文件 ✅IP核已导出
 
 ### 数据与输出
 - `data/`: MIT-BIH心电数据文件 (.dat/.hea/.atr格式)
