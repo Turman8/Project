@@ -1,13 +1,23 @@
 {
     "files.hotExit": "off",
     "workbench.enableExperiments": false,
-    "files.autoSave": "off",
+    "files.autoSave": "afterDelay",
+    "files.autoSaveDelay": 2000,
     "editor.formatOnSave": false,
     "workbench.editor.restoreViewState": false,
     "workbench.editor.enablePreview": false,
     "workbench.startupEditor": "none",
     "extensions.autoUpdate": false,
-    "python.defaultInterpreterPath": "./venv/bin/python",
+    "python.defaultInterpreterPath": "python",
+    "terminal.integrated.defaultProfile.windows": "PowerShell",
+    "terminal.integrated.profiles.windows": {
+        "PowerShell": {
+            "source": "PowerShell",
+            "args": ["-NoProfile"]
+        }
+    },
+    "git.autofetch": false,
+    "git.confirmSync": true,
     "files.exclude": {
         "**/__pycache__": true,
         "**/*.pyc": true,
@@ -36,7 +46,27 @@
         "**/test.py": true,
         "**/module_test.py": true,
         "**/*分析*.md": true,
-        "**/CLEANUP_*.md": true
+        "**/CLEANUP_*.md": true,
+        "**/*cleanup*.py": true,
+        "**/*cleanup*.sh": true,
+        "**/*cleanup*.bat": true,
+        "**/safety_report_*.json": true,
+        "**/*_manual_*.cpp": true,
+        "**/*_manual_*.h": true,
+        "**/*_experimental*.cpp": true,
+        "**/*_experimental*.h": true,
+        "**/tb_*.cpp": true,
+        "**/testbench_*.cpp": true,
+        "**/*.old": true,
+        "**/*.backup": true,
+        "**/*_v[0-9].": true,
+        "**/*_old.*": true,
+        "**/classifier.h": true,
+        "**/ecg_manual_fixed.h": true,
+        "**/ecg_manual_fixed_classifier.cpp": true,
+        "**/params.vh": true,
+        "**/tb_manual_fixed_classifier.cpp": true,
+        "**/github_cleanup.py": true
     },
     "search.exclude": {
         "**/__pycache__": true,
@@ -50,7 +80,21 @@
         "**/*build*.tcl": true,
         "**/*deploy*.tcl": true,
         "**/*test*.tcl": true,
-        "**/create_*.tcl": true
+        "**/create_*.tcl": true,
+        "**/*cleanup*.py": true,
+        "**/*cleanup*.sh": true,
+        "**/*cleanup*.bat": true,
+        "**/safety_report_*.json": true,
+        "**/*_manual_*.cpp": true,
+        "**/*_manual_*.h": true,
+        "**/*_experimental*.cpp": true,
+        "**/*_experimental*.h": true,
+        "**/tb_*.cpp": true,
+        "**/testbench_*.cpp": true,
+        "**/*.old": true,
+        "**/*.backup": true,
+        "**/*_v[0-9].": true,
+        "**/*_old.*": true
     },
     "files.watcherExclude": {
         "**/__pycache__/**": true,
@@ -63,6 +107,18 @@
         "**/*build*.tcl": true,
         "**/*deploy*.tcl": true,
         "**/*test*.tcl": true,
-        "**/create_*.tcl": true
+        "**/create_*.tcl": true,
+        "**/*cleanup*.py": true,
+        "**/*cleanup*.sh": true,
+        "**/*cleanup*.bat": true,
+        "**/safety_report_*.json": true,
+        "**/*_manual_*/**": true,
+        "**/*_experimental*/**": true,
+        "**/tb_*/**": true,
+        "**/testbench_*/**": true,
+        "**/*.old": true,
+        "**/*.backup": true,
+        "**/*_v[0-9].*": true,
+        "**/*_old.*": true
     }
 }
