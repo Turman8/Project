@@ -1,6 +1,6 @@
 """
 ECG心电图分析系统 - 基于真实MIT-BIH数据训练
-使用真实数据训练小波+CNN模型，然后部署到FPGA
+使用真实数据：小波特征 + 时域特征 + MLP 分类 + FPGA 部署
 """
 
 import numpy as np
@@ -224,8 +224,8 @@ def extract_all_features(beats):
     
     return np.array(all_features)
 
-def build_cnn_model(input_dim, num_classes):
-    """构建CNN模型"""
+def build_mlp_model(input_dim, num_classes):
+    """构建MLP（多层感知机）模型 - 基于46维特征向量"""
     model = Sequential([
         Dense(128, activation='relu', input_shape=(input_dim,)),
         Dropout(0.3),
@@ -246,7 +246,7 @@ def build_cnn_model(input_dim, num_classes):
 
 def train_model(X_train, X_test, y_train, y_test):
     """训练模型"""
-    print("🧠 训练CNN模型...")
+    print("🧠 训练MLP模型...")
     
     # 特征标准化
     scaler = StandardScaler()
@@ -254,7 +254,7 @@ def train_model(X_train, X_test, y_train, y_test):
     X_test_scaled = scaler.transform(X_test)
     
     # 构建模型
-    model = build_cnn_model(X_train.shape[1], len(np.unique(y_train)))
+    model = build_mlp_model(X_train.shape[1], len(np.unique(y_train)))
     
     # 训练
     history = model.fit(
@@ -453,7 +453,7 @@ void ecg_classify_trained(
     
     # 生成模型信息
     model_info = {
-        "model_type": "CNN (Trained on MIT-BIH)",
+        "model_type": "MLP (Trained on MIT-BIH)",
         "training_accuracy": float(test_accuracy),
         "input_features": int(input_dim),
         "layer_architecture": layer_sizes,
@@ -682,7 +682,7 @@ def main():
             'training_accuracy': float(test_accuracy),
             'model_architecture': [int(x) for x in model_info['layer_architecture']],
             'data_source': 'MIT-BIH Real Data',
-            'technology_stack': 'Wavelet + CNN + Real Training',
+            'technology_stack': 'Wavelet + Time Features + MLP',
             'class_distribution': {str(k): int(v) for k, v in zip(*np.unique(labels, return_counts=True))}
         }
         

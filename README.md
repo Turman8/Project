@@ -4,6 +4,13 @@
 
 本项目是基于MIT-BIH心电数据库的心电信号分类系统，目标是实现从Python软件模型到Xilinx FPGA硬件加速的完整部署流程。项目采用小波特征+全连接神经网络架构，目前正在推进软件模型向硬件部署的转换。
 
+当前工具链与产物总览（2019.2）：
+- 工具版本：Vivado 2019.2、Vivado HLS 2019.2（xsim）
+- 关键产物：
+    - Bitstream：`FPGA/vivado_ecg_proj/ecg_proj.runs/impl_1/design_1_wrapper.bit`
+    - XSA 平台：`FPGA/vivado_ecg_proj/export/design_1_wrapper.xsa`
+    - 打包 IP：`FPGA/ecg_classifier_project/solution1/impl/ip/user_ECG_ecg_classifier_1_0.zip`
+
 ## 📋 项目进展状态
 
 ### 🟢 已完成阶段
@@ -15,20 +22,30 @@
 - ✅ **权重量化**: 完整的16,550个Q8.8定点数权重数据
 - ✅ **自动化工具**: Python到HLS的权重转换脚本
 
-### � 最新完成阶段 (2025年7月24日)
+### 🆕 最新更新 (2025年9月1日)
+- ✅ **Bitstream 生成完成**: 成功构建最终 bitstream 文件 (4.05 MB)
+- ✅ **项目清理优化**: 安全删除冗余文件，释放 20.16 MB 存储空间
+- ✅ **自动化脚本完善**: 所有构建脚本验证通过，支持一键式部署
+- ✅ **Git 仓库优化**: 更新 .gitignore，防止临时文件污染版本控制
+
+### 🟩 上一次里程碑 (2025年8月12日)
+- ✅ HLS C 仿真、综合、C/RTL 联合仿真全部通过（xsim）
+- ✅ 修复 IP 打包 core_revision 异常（lexical cast）并成功导出 IP
+- ✅ 自动生成 Vivado 工程与 BD（PS7 + ecg_classifier + SmartConnect + proc_sys_reset）
+- ✅ 完成综合/实现并生成比特流：`vivado_ecg_proj/ecg_proj.runs/impl_1/design_1_wrapper.bit`
+- ✅ 导出硬件平台 XSA：`vivado_ecg_proj/export/design_1_wrapper.xsa`
 - ✅ **DSP资源优化**: 从270个DSP(122%)优化至49个DSP(22%) - 减少82%！
 - ✅ **HLS综合完成**: IP核生成成功，频率达到205.38MHz
 - ✅ **C仿真验证**: 功能验证通过，分类器正常工作
 - ✅ **IP核导出**: 生成`user_ECG_ecg_classifier_1_0.zip`可用于Vivado集成
 
 ### 🟡 正在进行阶段
-- 🔄 **Vivado项目**: 准备在Vivado中集成HLS IP核
-- 🔄 **系统验证**: 完整硬件系统测试
+- 🔄 **系统验证**: 上板功能测试与端到端链路验证
+- 🔄 **Vitis/SDK 应用**: 最小裸机示例与驱动验证
 
 ### 🔴 待完成阶段
-- ⏳ **Vivado集成**: IP核在Vivado中的系统集成
 - ⏳ **硬件仿真**: 完整系统的行为仿真
-- ⏳ **FPGA部署**: Zynq-7020实际硬件验证
+- ⏳ **FPGA部署**: Zynq-7020 实际硬件验证（烧写/运行）
 - ⏳ **性能评估**: 硬件加速效果测试
 
 ## 🛤️ 技术路线图
@@ -81,10 +98,20 @@ FPGA/
 │   ├── classifier.h      # 函数声明与数据类型
 │   ├── weights.h         # 神经网络权重头文件 ✅已生成
 │   ├── weights.cpp       # 神经网络权重数据 ✅已生成 (16,550参数)
-│   └── params.vh         # Verilog参数定义
+│   
 ├── testbench/            # 🧪 HLS测试台
-│   └── testbench.cpp     # C仿真测试
-└── build.tcl             # Vivado构建脚本 (待完善)
+│   └── test.cpp          # C仿真测试
+├── build.tcl             # HLS端到端流程 (csim→csynth→cosim→export)
+├── create_vivado_bd.tcl  # 生成Vivado工程与BD（PS7+HLS IP）
+├── build_bitstream.tcl   # 启动综合/实现并生成比特流
+├── export_xsa.tcl        # 导出硬件平台（含bit则一并打包）
+├── run_hls_cosim.ps1     # 一键运行HLS流程（PowerShell）
+├── run_create_vivado_bd.ps1  # 一键创建工程/BD
+├── run_build_bitstream.ps1   # 一键生成bitstream
+├── run_export_xsa.ps1        # 一键导出XSA
+└── vivado_ecg_proj/      # 生成的Vivado工程与产物
+    ├── ecg_proj.runs/impl_1/design_1_wrapper.bit
+    └── export/design_1_wrapper.xsa
 ```
 
 ### 数据流向
@@ -156,11 +183,15 @@ acc_t fixed_mult(data_t a, data_t b) {
 }
 ```
 
-### Phase 5: 系统集成 (待开始)
-**预期挑战**: Vivado项目管理与时序收敛
-- ⏳ **待解决**: `build.tcl`脚本编写
-- ⏳ **待验证**: HLS IP核在Vivado中的集成
-- ⏳ **待测试**: 完整系统的功能与性能验证
+### Phase 5: 系统集成 (已完成/待上板验证)
+**已完成**:
+- ✅ 自动生成 Vivado 工程与 BD（PS7 + ecg_classifier + SmartConnect + proc_sys_reset）
+- ✅ 综合/实现完成并生成 bitstream（design_1_wrapper.bit）
+- ✅ 导出 XSA 平台（design_1_wrapper.xsa）
+
+**下一步**:
+- 🔄 行为/系统级仿真（可选）
+- 🔄 上板烧写与 Vitis 裸机示例联调
 
 ## 🚀 快速开始
 
@@ -169,9 +200,8 @@ acc_t fixed_mult(data_t a, data_t b) {
 # Python环境 (推荐Python 3.8+)
 pip install tensorflow pandas numpy scikit-learn pywt wfdb scipy matplotlib
 
-# FPGA开发环境
-Xilinx Vivado 2024.1.2
-Vitis HLS 2024.1.2  
+# FPGA开发环境（当前工程基于 2019.2）
+# Vivado 2019.2 + Vivado HLS 2019.2（xsim）
 ```
 
 ### 当前可运行的功能
@@ -201,16 +231,53 @@ python convert_weights_to_fixed.py
 # 输出: 完整的Q8.8定点权重数据
 ```
 
-#### 4. HLS仿真测试 ✅已完成
+#### 4. HLS仿真与导出 ✅已完成
 ```bash
 # 进入FPGA目录
 cd FPGA
 
-# HLS C仿真+综合+IP导出 (已完成)
-vitis_hls -f build.tcl
+# 一键运行HLS流程（csim→csynth→cosim→export）
+# Windows/PowerShell 环境（已在 2019.2 上验证）
+./run_hls_cosim.ps1
 
-# 输出: ecg_classifier_project/solution1/impl/ip/user_ECG_ecg_classifier_1_0.zip
-# 资源使用: DSP 49/220 (22%), BRAM 40 (14%), 频率 205.38MHz
+# 关键输出
+# - ecg_classifier_project/solution1/impl/ip/component.xml
+# - ecg_classifier_project/solution1/impl/ip/user_ECG_ecg_classifier_1_0.zip
+```
+
+#### 5. 生成 Vivado 工程与 BD ✅已完成
+```bash
+cd FPGA
+./run_create_vivado_bd.ps1
+
+# 输出工程位置
+# - vivado_ecg_proj/
+```
+
+#### 6. 构建 bitstream ✅已完成
+```bash
+cd FPGA
+./run_build_bitstream.ps1
+
+# 关键输出
+# - vivado_ecg_proj/ecg_proj.runs/impl_1/design_1_wrapper.bit
+```
+
+#### 7. 导出 XSA 平台 ✅已完成
+```bash
+cd FPGA
+./run_export_xsa.ps1
+
+# 关键输出
+# - vivado_ecg_proj/export/design_1_wrapper.xsa
+```
+
+#### 8. 烧写与 Vitis 使用简要
+```text
+Vivado 硬件管理器 → Open Target → Program Device → 选择 design_1_wrapper.bit → Program。
+Vitis 2019.2 → New Platform Project → 选择 design_1_wrapper.xsa → 生成平台。
+New Application Project → 选择平台 → 建空工程或模板 → 通过 AXI4-Lite 配置 ecg_classifier；
+数据由 PS7 HP0/HP1 与 DDR 连接的 m_axi gmem0/gmem1 访问。
 ```
 
 ## 📊 项目里程碑与成就
@@ -233,7 +300,7 @@ vitis_hls -f build.tcl
 
 ## 📊 当前性能基准
 
-### 软件模型性能 (基于outputs/model_report.json)
+### 软件模型性能 (基于 outputs/experiments/*.json 与训练日志)
 - **特征优化**: 从40维减少到46维特征设计
 - **处理速度**: 0.030秒处理30秒ECG数据
 - **心拍检测**: 平均34个心拍/30秒记录
@@ -247,13 +314,47 @@ vitis_hls -f build.tcl
 - **工作频率**: 205.38MHz (超过150MHz目标37%)
 - **功耗估算**: < 200mW (基于资源使用)
 
+提示：实现阶段的详细时序/布线/资源报告可在如下目录查看：
+`FPGA/vivado_ecg_proj/ecg_proj.runs/impl_1/`（例如 `*_timing_summary_routed.rpt`、`*_utilization_placed.rpt`）。
+
+## 🛠️ 项目维护与管理
+
+### 自动化脚本说明
+项目包含完整的自动化构建流程，支持一键式从 HLS 到 bitstream 的端到端构建：
+
+**HLS 阶段**:
+- `FPGA/build.tcl` - HLS 完整流程 (C仿真→综合→RTL仿真→IP导出)
+- `FPGA/run_hls_cosim.ps1` - PowerShell 包装器
+
+**Vivado 阶段**:
+- `FPGA/create_vivado_bd.tcl` - 自动创建 Block Design
+- `FPGA/run_create_vivado_bd.ps1` - PowerShell 包装器
+- `FPGA/build_bitstream.tcl` - Bitstream 构建流程
+- `FPGA/run_build_bitstream.ps1` - PowerShell 包装器
+- `FPGA/export_xsa.tcl` - XSA 硬件平台导出
+- `FPGA/run_export_xsa.ps1` - PowerShell 包装器
+
+**项目清理**:
+- `scripts/project_safe_cleanup.ps1` - 安全清理临时文件（预览模式：`-Preview`，强制执行：`-Force`）
+
+### 文件管理最佳实践
+项目经过精心优化，删除了冗余的临时文件和缓存：
+- ✅ **已删除**: 20.16 MB 临时文件（日志、缓存、冗余脚本）
+- ✅ **保留关键产物**: Bitstream、XSA、IP核、所有源码
+- ✅ **Git优化**: `.gitignore` 更新，防止临时文件进入版本控制
+
+### VS Code 集成
+项目已配置 VS Code 任务，支持快捷构建：
+- `Ctrl+Shift+P` → `Tasks: Run Task` → 选择构建阶段
+- 支持的任务：HLS构建、Vivado项目创建、Bitstream构建、XSA导出、项目清理
+
 ## ⚠️ 当前限制与已知问题
 
 ### 开发阶段限制
 1. ✅ ~~权重文件缺失~~: `FPGA/hls_source/weights.h`和`weights.cpp`已完成
 2. ✅ ~~DSP资源超限~~: 从270个DSP优化至49个，完美适配Zynq-7020
 3. ✅ ~~HLS综合问题~~: IP核生成成功，所有模块正常综合
-4. **Vivado项目未创建**: 完整系统集成尚未开始
+4. **Vivado 集成已完成**: 工程/BD/bit/XSA 均已生成（需要上板验证）
 
 ### 技术债务
 - ✅ ~~浮点到定点转换的精度验证~~: Q8.8转换已完成
@@ -269,11 +370,11 @@ vitis_hls -f build.tcl
 - ✅ ~~编写完整的`build.tcl`脚本~~
 - ✅ ~~运行HLS C仿真，验证功能正确性~~
 - ✅ ~~进行HLS综合，生成IP核~~
-- [ ] 在Vivado中创建项目并集成IP核
+- ✅ 在Vivado中创建项目并集成IP核
+- [ ] 提交最小 Vitis 裸机示例（驱动 AXI-Lite + DDR 缓冲区读写）
 
 ### 中期目标 (1个月)
-- [ ] 在Vivado中创建完整系统项目
-- [ ] 集成HLS IP核到AXI总线系统
+- ✅ 在Vivado中创建完整系统项目并集成 HLS IP
 - [ ] 编写软件驱动程序
 - [ ] 完成行为仿真验证
 
@@ -292,7 +393,6 @@ vitis_hls -f build.tcl
   - TensorFlow神经网络训练与评估
 - `export_weights.py`: 权重导出工具 ✅已完成
 - `convert_weights_to_fixed.py`: 定点转换工具 ✅已完成
-- `tangyin.py`: 高考志愿录取系统 (独立项目)
 
 ### FPGA实现文件  
 - `FPGA/hls_source/classifier.cpp`: HLS C++分类器实现
@@ -305,7 +405,7 @@ vitis_hls -f build.tcl
 
 ### 数据与输出
 - `data/`: MIT-BIH心电数据文件 (.dat/.hea/.atr格式)
-- `outputs/model_report.json`: 训练结果报告
+- `outputs/experiments/real_training_*.json`: 训练结果报告
 - `outputs/final_model.h5`: TensorFlow模型文件
 
 ### 配置文件
@@ -414,6 +514,25 @@ def float_to_q8_8(value):
 - **pragma使用**: 适度的并行化，过度优化可能导致资源不足
 
 ## 🌟 致谢与参考
+
+## 🧹 清理生成物（安全）
+
+脚本：`scripts/clean_generated.ps1`
+
+- 预览模式（默认）：仅列出将要删除的生成物，不做修改
+    - 在 PowerShell 中执行：
+        - Set-Location D:\Git\Project
+        - .\scripts\clean_generated.ps1
+
+- 强制清理：实际删除生成物/缓存/日志，保留 bit/XSA/IP
+    - 在 PowerShell 中执行：
+        - Set-Location D:\Git\Project
+        - .\scripts\clean_generated.ps1 -Force
+
+保留清单（不会被删除）：
+- `FPGA/vivado_ecg_proj/export/design_1_wrapper.xsa`
+- `FPGA/vivado_ecg_proj/ecg_proj.runs/impl_1`（整个实现目录）
+- `FPGA/ecg_classifier_project/solution1/impl/ip`
 
 ### 数据源
 - MIT-BIH Arrhythmia Database (PhysioNet)

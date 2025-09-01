@@ -120,5 +120,42 @@
         "**/*.backup": true,
         "**/*_v[0-9].*": true,
         "**/*_old.*": true
-    }
+    },
+    "python.analysis.autoImportCompletions": false,
+    "editor.suggest.selectionMode": "whenTriggerCharacter",
+    "editor.suggest.snippetsPreventQuickSuggestions": false,
+    "editor.inlineSuggest.experimental.triggerCommandOnProviderChange": true,
+    
+    // 关闭自动代码补全建议 - 改为手动触发
+    "editor.quickSuggestions": {
+        "other": false,
+        "comments": false, 
+        "strings": false
+    },
+    
+    // 关闭输入时自动显示建议
+    "editor.suggestOnTriggerCharacters": false,
+    
+    // 设置建议触发方式
+    "editor.acceptSuggestionOnCommitCharacter": false,
+    "editor.acceptSuggestionOnEnter": "off",
+    
+    // 关闭参数提示的自动显示
+    "editor.parameterHints.enabled": false,
+    
+    // 关闭悬停提示
+    "editor.hover.enabled": false,
+    
+    // 关闭内联建议（GitHub Copilot等）
+    "editor.inlineSuggest.enabled": false,
+    
+    // 关闭基于单词的建议
+    "editor.wordBasedSuggestions": "off",
+    "jupyter.showCellInputCode": true,
+    
+    // Python 特定设置
+    "python.analysis.completeFunctionParens": false,
+    "python.linting.enabled": false,
+    "python.linting.pylintEnabled": false,
+    "jupyter.interactiveWindow.codeLens.enable": false
 }

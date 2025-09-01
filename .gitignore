@@ -1,8 +1,49 @@
-# HLS自动生成的文件和目录
-FPGA/ecg_classifier_project/
+# VS Code 临时文件
+.vscode/settings.json
+.vscode/launch.json
+
+# Vivado 状态文件（正常的空文件）
+*.rst
+__synthesis_is_complete__
+__implementation_is_complete__
+
+# HLS自动生成的文件和目录（保留 IP 导出目录）
+FPGA/ecg_classifier_project/solution1/csim/
+FPGA/ecg_classifier_project/solution1/sim/
+FPGA/ecg_classifier_project/solution1/syn/
+FPGA/ecg_classifier_project/solution1/.autopilot/
+FPGA/ecg_classifier_project/solution1/.ipcache/
+FPGA/ecg_classifier_project/solution1/impl/.Xil/
+FPGA/ecg_classifier_project/solution1/solution1.log
 FPGA/vitis_hls.log
+FPGA/vivado_hls.log
 FPGA/*.jou
 FPGA/*.log
+FPGA/vivado_*.backup.*
+
+# Vivado 工程生成物（保留关键产物）
+FPGA/vivado_ecg_proj/.Xil/
+FPGA/vivado_ecg_proj/.cache/
+FPGA/vivado_ecg_proj/ecg_proj.cache/
+FPGA/vivado_ecg_proj/ecg_proj.hw/
+FPGA/vivado_ecg_proj/ecg_proj.ip_user_files/
+FPGA/vivado_ecg_proj/ecg_proj.runs/synth_1/
+FPGA/vivado_ecg_proj/ecg_proj.runs/design_1_*_synth_1/
+FPGA/vivado_ecg_proj/reports/
+FPGA/vivado_ecg_proj/*.jou
+FPGA/vivado_ecg_proj/*.log
+
+# 但保留关键产物
+!FPGA/vivado_ecg_proj/export/
+!FPGA/vivado_ecg_proj/ecg_proj.runs/impl_1/design_1_wrapper.bit
+!FPGA/vivado_ecg_proj/ecg_proj.runs/impl_1/design_1_wrapper.hwdef
+!FPGA/ecg_classifier_project/solution1/impl/ip/
+
+# 冗余脚本文件（已删除）
+FPGA/synthesis.tcl
+
+# 实验性文件（已删除）
+Untitled-*.ipynb
 
 # Python
 __pycache__/
@@ -41,13 +82,18 @@ ENV/
 env.bak/
 venv.bak/
 
-# Vivado/Vitis生成文件
-*.xpr
+# Vivado/Vitis生成文件（通用模式，但有例外保护）
 *.cache/
 *.runs/
 *.sim/
 *.srcs/
 *.gen/
+*.hw/
+*.ip_user_files/
+.Xil/
+
+# 输出目录中的临时生成物
+outputs/fpga_deployment*/
 *.hw/
 *.ip_user_files/
 *.log
