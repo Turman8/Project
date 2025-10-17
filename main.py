@@ -486,51 +486,188 @@ def quantize_model_for_fpga(model, representative_data, output_dir, timestamp, c
 
 
 
-def export_cnn_weights_for_hls(model, output_dir):
-    """导出CNN权重为HLS友好的格式 (NPZ + 头文件)"""
+def export_cnn_weights_for_hls(model, output_dir, fixed_point_total_bits=16, fixed_point_integer_bits=6):
+    """导出CNN权重到HLS模板所需的头文件与NPZ权重包"""
 
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
-    weight_tensors = {}
-    header_lines = ["#ifndef CNN_WEIGHTS_H", "#define CNN_WEIGHTS_H", ""]
+    if len(model.input_shape) != 4:
+        raise ValueError("模型输入必须是四维张量 [B, H, W, C]")
 
-    for idx, layer in enumerate(model.layers):
-        layer_weights = layer.get_weights()
-        if not layer_weights:
-            continue
+    input_height, input_width, input_channels = [int(dim) for dim in model.input_shape[1:]]
 
-        layer_name = f"layer_{idx}_{layer.name}".replace('/', '_').replace('-', '_')
-        weights = layer_weights[0].astype(np.float32)
-        weight_tensors[f"{layer_name}_weights"] = weights
+    conv_layers = []
+    dense_layers = []
+    flatten_size = None
 
-        header_lines.append(f"// Layer {idx}: {layer.name} weights")
-        header_lines.append(f"const int {layer_name}_weights_rank = {weights.ndim};")
-        header_lines.append(
-            f"const int {layer_name}_weights_shape[{weights.ndim}] = {{{', '.join(str(dim) for dim in weights.shape)}}};")
-        header_lines.append(f"const float {layer_name}_weights[{weights.size}] = {{")
-        flat_weights = weights.flatten()
-        for start_idx in range(0, flat_weights.size, 8):
-            chunk = flat_weights[start_idx:start_idx + 8]
+    for layer in model.layers:
+        if isinstance(layer, Conv2D):
+            weights, biases = layer.get_weights()
+            weights = np.transpose(weights.astype(np.float32), (3, 2, 0, 1))  # OC, IC, KH, KW
+            conv_layers.append({
+                'name': layer.name,
+                'weights': weights,
+                'biases': biases.astype(np.float32),
+                'kernel': (int(weights.shape[2]), int(weights.shape[3])),
+                'in_channels': int(weights.shape[1]),
+                'out_channels': int(weights.shape[0]),
+                'output_shape': [int(dim) for dim in layer.output_shape[1:4]]
+            })
+
+        elif isinstance(layer, BatchNormalization):
+            if not conv_layers:
+                continue
+            gamma, beta, moving_mean, moving_variance = layer.get_weights()
+            epsilon = getattr(layer, 'epsilon', 1e-3)
+            scale = gamma / np.sqrt(moving_variance + epsilon)
+            offset = beta - moving_mean * scale
+            conv_layers[-1]['bn_scale'] = scale.astype(np.float32)
+            conv_layers[-1]['bn_offset'] = offset.astype(np.float32)
+
+        elif isinstance(layer, MaxPooling2D):
+            if conv_layers:
+                conv_layers[-1]['pool_output_shape'] = [
+                    int(dim) if dim is not None else None for dim in layer.output_shape[1:4]
+                ]
+
+        elif isinstance(layer, Flatten):
+            flatten_size = int(np.prod([dim for dim in layer.output_shape[1:] if dim is not None]))
+
+        elif isinstance(layer, Dense):
+            weights, biases = layer.get_weights()
+            dense_layers.append({
+                'name': layer.name,
+                'weights': weights.astype(np.float32).T,  # OUT, IN
+                'biases': biases.astype(np.float32),
+                'units': int(layer.units),
+                'input_dim': int(weights.shape[0]),
+                'activation': getattr(layer.activation, '__name__', 'linear')
+            })
+
+    if not conv_layers or not dense_layers:
+        raise ValueError("模型中未找到卷积或全连接层，无法导出HLS权重")
+
+    if len(conv_layers) != 3:
+        raise ValueError(f"当前HLS模板假定3个卷积块，检测到 {len(conv_layers)} 个。请调整模型或扩展模板。")
+    if len(dense_layers) < 2:
+        raise ValueError(f"当前HLS模板假定至少2个全连接层，检测到 {len(dense_layers)} 个。")
+
+    for conv in conv_layers:
+        if 'bn_scale' not in conv:
+            conv['bn_scale'] = np.ones((conv['out_channels'],), dtype=np.float32)
+            conv['bn_offset'] = np.zeros((conv['out_channels'],), dtype=np.float32)
+        if 'pool_output_shape' not in conv:
+            conv['pool_output_shape'] = conv['output_shape']
+
+    if flatten_size is None:
+        raise ValueError("模型未包含Flatten层，无法确定全连接输入维度")
+
+    def format_array(name, values, values_per_line=8):
+        values = np.asarray(values, dtype=np.float32).ravel()
+        lines = [f"static const float {name}[{values.size}] = {{"]
+        for start in range(0, values.size, values_per_line):
+            chunk = values[start:start + values_per_line]
             chunk_str = ", ".join(f"{val:.8e}f" for val in chunk)
-            suffix = ',' if start_idx + 8 < flat_weights.size else ''
-            header_lines.append(f"    {chunk_str}{suffix}")
-        header_lines.append("};")
-        header_lines.append("")
+            suffix = ',' if start + values_per_line < values.size else ''
+            lines.append(f"    {chunk_str}{suffix}")
+        lines.append("};")
+        lines.append("")
+        return lines
 
-        if len(layer_weights) > 1:
-            biases = layer_weights[1].astype(np.float32)
-            weight_tensors[f"{layer_name}_biases"] = biases
-            header_lines.append(f"const int {layer_name}_biases_length = {biases.size};")
-            header_lines.append(f"const float {layer_name}_biases[{biases.size}] = {{")
-            flat_biases = biases.flatten()
-            for start_idx in range(0, flat_biases.size, 8):
-                chunk = flat_biases[start_idx:start_idx + 8]
-                chunk_str = ", ".join(f"{val:.8e}f" for val in chunk)
-                suffix = ',' if start_idx + 8 < flat_biases.size else ''
-                header_lines.append(f"    {chunk_str}{suffix}")
-            header_lines.append("};")
-            header_lines.append("")
+    num_classes = int(dense_layers[-1]['units'])
+
+    header_lines = [
+        "#ifndef CNN_WEIGHTS_H",
+        "#define CNN_WEIGHTS_H",
+        "",
+        "#include <cstddef>",
+        "",
+        f"static constexpr int CNN_HLS_TOTAL_BITS = {int(fixed_point_total_bits)};",
+        f"static constexpr int CNN_HLS_INTEGER_BITS = {int(fixed_point_integer_bits)};",
+        "",
+        f"static constexpr int INPUT_HEIGHT = {input_height};",
+        f"static constexpr int INPUT_WIDTH = {input_width};",
+        f"static constexpr int INPUT_CHANNELS = {input_channels};",
+        f"static constexpr int NUM_CLASSES = {num_classes};",
+        ""
+    ]
+
+    hls_manifest = {
+        'input_shape': [input_height, input_width, input_channels],
+        'conv_layers': [],
+        'dense_layers': [],
+        'flatten_size': int(flatten_size),
+        'num_classes': num_classes
+    }
+
+    npz_tensors = {}
+
+    for idx, conv in enumerate(conv_layers, start=1):
+        kernel_h, kernel_w = conv['kernel']
+        out_h, out_w, out_c = conv['output_shape'][0], conv['output_shape'][1], conv['output_shape'][2]
+        pool_h, pool_w, pool_c = conv['pool_output_shape'][0], conv['pool_output_shape'][1], conv['pool_output_shape'][2]
+
+        header_lines.extend([
+            f"// Conv block {idx}: {conv['name']}",
+            f"static constexpr int CONV{idx}_KERNEL_H = {kernel_h};",
+            f"static constexpr int CONV{idx}_KERNEL_W = {kernel_w};",
+            f"static constexpr int CONV{idx}_IN_CHANNELS = {conv['in_channels']};",
+            f"static constexpr int CONV{idx}_OUT_CHANNELS = {conv['out_channels']};",
+            f"static constexpr int CONV{idx}_OUTPUT_HEIGHT = {out_h};",
+            f"static constexpr int CONV{idx}_OUTPUT_WIDTH = {out_w};",
+            f"static constexpr int POOL{idx}_OUTPUT_HEIGHT = {pool_h};",
+            f"static constexpr int POOL{idx}_OUTPUT_WIDTH = {pool_w};",
+            f"static constexpr int POOL{idx}_OUTPUT_CHANNELS = {pool_c};",
+            ""
+        ])
+
+        weight_key = f"conv{idx}_weights"
+        bias_key = f"conv{idx}_biases"
+        scale_key = f"conv{idx}_bn_scale"
+        offset_key = f"conv{idx}_bn_offset"
+
+        npz_tensors[weight_key] = conv['weights']
+        npz_tensors[bias_key] = conv['biases']
+        npz_tensors[scale_key] = conv['bn_scale']
+        npz_tensors[offset_key] = conv['bn_offset']
+
+        header_lines.extend(format_array(f"CONV{idx}_WEIGHTS", conv['weights']))
+        header_lines.extend(format_array(f"CONV{idx}_BIASES", conv['biases']))
+        header_lines.extend(format_array(f"CONV{idx}_BN_SCALE", conv['bn_scale']))
+        header_lines.extend(format_array(f"CONV{idx}_BN_OFFSET", conv['bn_offset']))
+
+        hls_manifest['conv_layers'].append({
+            'name': conv['name'],
+            'kernel': [kernel_h, kernel_w],
+            'in_channels': conv['in_channels'],
+            'out_channels': conv['out_channels'],
+            'output_shape': conv['output_shape'],
+            'pool_output_shape': conv['pool_output_shape']
+        })
+
+    header_lines.append(f"static constexpr int FLATTEN_SIZE = {flatten_size};")
+    header_lines.append("")
+
+    for idx, dense in enumerate(dense_layers, start=1):
+        npz_tensors[f"dense{idx}_weights"] = dense['weights']
+        npz_tensors[f"dense{idx}_biases"] = dense['biases']
+
+        header_lines.extend([
+            f"// Dense layer {idx}: {dense['name']} ({dense['activation']})",
+            f"static constexpr int DENSE{idx}_INPUTS = {dense['input_dim']};",
+            f"static constexpr int DENSE{idx}_OUTPUTS = {dense['units']};",
+            ""
+        ])
+        header_lines.extend(format_array(f"DENSE{idx}_WEIGHTS", dense['weights']))
+        header_lines.extend(format_array(f"DENSE{idx}_BIASES", dense['biases']))
+
+        hls_manifest['dense_layers'].append({
+            'name': dense['name'],
+            'inputs': dense['input_dim'],
+            'units': dense['units'],
+            'activation': dense['activation']
+        })
 
     header_lines.append("#endif // CNN_WEIGHTS_H")
 
@@ -538,10 +675,10 @@ def export_cnn_weights_for_hls(model, output_dir):
     header_path.write_text("\n".join(header_lines), encoding='utf-8')
 
     weights_npz_path = output_path / "cnn_weights.npz"
-    if weight_tensors:
-        np.savez_compressed(weights_npz_path, **weight_tensors)
-    else:
-        np.savez_compressed(weights_npz_path, placeholder=np.array([], dtype=np.float32))
+    np.savez_compressed(weights_npz_path, **npz_tensors)
+
+    with open(output_path / "hls_manifest.json", 'w', encoding='utf-8') as f:
+        json.dump(hls_manifest, f, indent=2, ensure_ascii=False)
 
     print(f"✅ CNN权重已导出: {weights_npz_path}")
     return str(weights_npz_path), str(header_path)
@@ -569,6 +706,9 @@ def create_fpga_deployment_package(model,
     shutil.copy2(quant_path, quant_dest)
 
     weights_npz_path, weights_header_path = export_cnn_weights_for_hls(model, output_dir / "weights")
+    weights_npz_path = Path(weights_npz_path)
+    weights_header_path = Path(weights_header_path)
+    weights_dir = weights_npz_path.parent
 
     history_data = {}
     if history is not None and hasattr(history, 'history'):
@@ -587,6 +727,7 @@ def create_fpga_deployment_package(model,
         'confusion_matrix': conf_matrix.tolist(),
         'weights_npz': os.path.relpath(weights_npz_path, output_dir),
         'weights_header': os.path.relpath(weights_header_path, output_dir),
+        'hls_manifest': os.path.relpath(weights_dir / "hls_manifest.json", output_dir),
         'tflite_model': quant_dest.name
     }
 
@@ -607,6 +748,7 @@ def create_fpga_deployment_package(model,
         - `{quant_dest.name}`: 量化后的 TensorFlow Lite 模型。
         - `weights/cnn_weights.npz`: 原始浮点卷积/全连接权重，便于定制化量化或FINN/TVM等工具链使用。
         - `weights/cnn_weights.h`: HLS 友好的权重头文件，可直接在Vitis HLS项目中包含。
+        - `hls/`: 结合 `cnn_weights.h` 的Vitis HLS推理模板源码，可直接综合生成Pynq-Z2加速核。
         - `deployment_metadata.json`: 模型结构、量化、类别映射等关键信息。
         - `classification_report.txt`: 测试集分类指标。
         - `confusion_matrix.npy`: 测试集混淆矩阵 (numpy格式)。
@@ -633,6 +775,12 @@ def create_fpga_deployment_package(model,
 
     with open(output_dir / "README.md", 'w', encoding='utf-8') as f:
         f.write(readme_text)
+
+    hls_template_dir = Path('FPGA/hls_cnn')
+    if hls_template_dir.exists():
+        target_hls_dir = output_dir / 'hls'
+        shutil.copytree(hls_template_dir, target_hls_dir, dirs_exist_ok=True)
+        print(f"   ✅ 已复制HLS推理模板: {target_hls_dir}")
 
     pynq_script = textwrap.dedent("""
         # Pynq-Z2 TensorFlow Lite 推理示例
