@@ -598,7 +598,11 @@ def export_cnn_weights_for_hls(model, output_dir, fixed_point_total_bits=16, fix
         'conv_layers': [],
         'dense_layers': [],
         'flatten_size': int(flatten_size),
-        'num_classes': num_classes
+        'num_classes': num_classes,
+        'weight_statistics': {
+            'conv_layers': [],
+            'dense_layers': []
+        }
     }
 
     npz_tensors = {}
@@ -646,6 +650,28 @@ def export_cnn_weights_for_hls(model, output_dir, fixed_point_total_bits=16, fix
             'pool_output_shape': conv['pool_output_shape']
         })
 
+        hls_manifest['weight_statistics']['conv_layers'].append({
+            'name': conv['name'],
+            'weights': {
+                'min': float(np.min(conv['weights'])),
+                'max': float(np.max(conv['weights'])),
+                'mean': float(np.mean(conv['weights'])),
+                'std': float(np.std(conv['weights']))
+            },
+            'biases': {
+                'min': float(np.min(conv['biases'])),
+                'max': float(np.max(conv['biases'])),
+                'mean': float(np.mean(conv['biases'])),
+                'std': float(np.std(conv['biases']))
+            },
+            'batch_norm': {
+                'scale_min': float(np.min(conv['bn_scale'])),
+                'scale_max': float(np.max(conv['bn_scale'])),
+                'offset_min': float(np.min(conv['bn_offset'])),
+                'offset_max': float(np.max(conv['bn_offset']))
+            }
+        })
+
     header_lines.append(f"static constexpr int FLATTEN_SIZE = {flatten_size};")
     header_lines.append("")
 
@@ -669,6 +695,22 @@ def export_cnn_weights_for_hls(model, output_dir, fixed_point_total_bits=16, fix
             'activation': dense['activation']
         })
 
+        hls_manifest['weight_statistics']['dense_layers'].append({
+            'name': dense['name'],
+            'weights': {
+                'min': float(np.min(dense['weights'])),
+                'max': float(np.max(dense['weights'])),
+                'mean': float(np.mean(dense['weights'])),
+                'std': float(np.std(dense['weights']))
+            },
+            'biases': {
+                'min': float(np.min(dense['biases'])),
+                'max': float(np.max(dense['biases'])),
+                'mean': float(np.mean(dense['biases'])),
+                'std': float(np.std(dense['biases']))
+            }
+        })
+
     header_lines.append("#endif // CNN_WEIGHTS_H")
 
     header_path = output_path / "cnn_weights.h"
@@ -681,7 +723,7 @@ def export_cnn_weights_for_hls(model, output_dir, fixed_point_total_bits=16, fix
         json.dump(hls_manifest, f, indent=2, ensure_ascii=False)
 
     print(f"✅ CNN权重已导出: {weights_npz_path}")
-    return str(weights_npz_path), str(header_path)
+    return str(weights_npz_path), str(header_path), hls_manifest
 
 
 def create_fpga_deployment_package(model,
@@ -693,7 +735,8 @@ def create_fpga_deployment_package(model,
                                    textual_report,
                                    conf_matrix,
                                    class_distribution,
-                                   timestamp):
+                                   timestamp,
+                                   per_class_metrics=None):
     """创建适配Pynq-Z2的部署资源包"""
 
     print("\n🔧 创建FPGA/Pynq部署资源包...")
@@ -705,7 +748,7 @@ def create_fpga_deployment_package(model,
     quant_dest = output_dir / quant_path.name
     shutil.copy2(quant_path, quant_dest)
 
-    weights_npz_path, weights_header_path = export_cnn_weights_for_hls(model, output_dir / "weights")
+    weights_npz_path, weights_header_path, hls_manifest = export_cnn_weights_for_hls(model, output_dir / "weights")
     weights_npz_path = Path(weights_npz_path)
     weights_header_path = Path(weights_header_path)
     weights_dir = weights_npz_path.parent
@@ -728,7 +771,9 @@ def create_fpga_deployment_package(model,
         'weights_npz': os.path.relpath(weights_npz_path, output_dir),
         'weights_header': os.path.relpath(weights_header_path, output_dir),
         'hls_manifest': os.path.relpath(weights_dir / "hls_manifest.json", output_dir),
-        'tflite_model': quant_dest.name
+        'weight_statistics': hls_manifest.get('weight_statistics', {}),
+        'tflite_model': quant_dest.name,
+        'per_class_metrics': per_class_metrics or {}
     }
 
     with open(output_dir / "deployment_metadata.json", 'w', encoding='utf-8') as f:
@@ -863,7 +908,7 @@ def create_fpga_deployment_package(model,
         f.write(pynq_script)
 
     print(f"✅ FPGA部署包已创建: {output_dir}")
-    return str(output_dir)
+    return str(output_dir), hls_manifest.get('weight_statistics', {})
 
 def main():
     """主程序 - 使用真实数据训练"""
@@ -898,6 +943,17 @@ def main():
             X_train, X_test, y_train, y_test, class_names=class_names
         )
 
+        per_class_metrics = {}
+        for class_name, metrics in report_dict.items():
+            if class_name in {'accuracy', 'macro avg', 'weighted avg'}:
+                continue
+            per_class_metrics[class_name] = {
+                'precision': float(metrics.get('precision', 0.0)),
+                'recall': float(metrics.get('recall', 0.0)),
+                'f1_score': float(metrics.get('f1-score', 0.0)),
+                'support': int(metrics.get('support', 0))
+            }
+
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 
         # 第5步：量化模型并生成FPGA部署包
@@ -907,7 +963,7 @@ def main():
             model, X_train, str(quantized_dir), timestamp
         )
 
-        fpga_output_dir = create_fpga_deployment_package(
+        fpga_output_dir, weight_statistics = create_fpga_deployment_package(
             model=model,
             class_names=class_names,
             label_mapping=label_mapping,
@@ -917,8 +973,32 @@ def main():
             textual_report=textual_report,
             conf_matrix=conf_matrix,
             class_distribution=class_distribution,
-            timestamp=timestamp
+            timestamp=timestamp,
+            per_class_metrics=per_class_metrics
         )
+
+        def _format_top_classes(metrics_dict, top_k=5):
+            sorted_items = sorted(metrics_dict.items(), key=lambda kv: kv[1]['f1_score'], reverse=True)
+            lines = []
+            for name, stats in sorted_items[:top_k]:
+                lines.append(f"      • {name}: F1={stats['f1_score']:.4f}, 精确率={stats['precision']:.4f}, 召回率={stats['recall']:.4f}, 样本数={stats['support']}")
+            return "\n".join(lines)
+
+        def _format_weight_summary(weight_stats):
+            lines = []
+            for layer in weight_stats.get('conv_layers', []):
+                w = layer['weights']
+                b = layer['biases']
+                lines.append(
+                    f"      • {layer['name']} 卷积权重范围[{w['min']:.4f}, {w['max']:.4f}] (μ={w['mean']:.4f}, σ={w['std']:.4f}); 偏置范围[{b['min']:.4f}, {b['max']:.4f}]"
+                )
+            for layer in weight_stats.get('dense_layers', []):
+                w = layer['weights']
+                b = layer['biases']
+                lines.append(
+                    f"      • {layer['name']} 全连接权重范围[{w['min']:.4f}, {w['max']:.4f}] (μ={w['mean']:.4f}, σ={w['std']:.4f}); 偏置范围[{b['min']:.4f}, {b['max']:.4f}]"
+                )
+            return "\n".join(lines)
 
         # 第6步：保存结果
         history_data = {}
@@ -942,7 +1022,9 @@ def main():
             'confusion_matrix': conf_matrix.tolist(),
             'training_history': history_data,
             'fpga_package': fpga_output_dir,
-            'tflite_model': quant_model_path
+            'tflite_model': quant_model_path,
+            'per_class_metrics': per_class_metrics,
+            'weight_statistics': weight_statistics
         }
 
         os.makedirs('outputs/experiments', exist_ok=True)
@@ -963,8 +1045,14 @@ def main():
         print(f"📁 FPGA部署包: {fpga_output_dir}")
         print(f"💾 模型文件: outputs/trained_ecg_cnn_{timestamp}.h5")
         print(f"🧮 支持心律类型: {', '.join(class_names)}")
+        if per_class_metrics:
+            print("📈 各类别F1评分:")
+            print(_format_top_classes(per_class_metrics, top_k=min(10, len(per_class_metrics))))
+        if weight_statistics:
+            print("⚖️ 权重统计:")
+            print(_format_weight_summary(weight_statistics))
         print("🎯 模型已适配Pynq-Z2量化部署流程，可直接复制部署目录进行验证。")
-        
+
     except Exception as e:
         print(f"\n❌ 训练失败: {str(e)}")
         import traceback
