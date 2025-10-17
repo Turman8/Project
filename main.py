@@ -3,15 +3,17 @@ ECG心电图分析系统 - 基于真实MIT-BIH数据训练
 使用真实数据：小波特征 + 时域特征 + MLP 分类 + FPGA 部署
 """
 
-import numpy as np
+import argparse
+import json
 import os
+import shutil
 import sys
+import textwrap
 import time
 from datetime import datetime
-import json
-import shutil
 from pathlib import Path
-import textwrap
+
+import numpy as np
 import pywt
 from scipy import signal
 import wfdb
@@ -360,21 +362,36 @@ def train_model(X_train, X_test, y_train, y_test, class_names=None):
     test_loss, test_accuracy = model.evaluate(X_test_scaled, y_test, verbose=0)
     y_pred = model.predict(X_test_scaled)
     y_pred_classes = np.argmax(y_pred, axis=1)
-    
+
     print(f"\n✅ 训练完成!")
     print(f"   测试准确率: {test_accuracy:.4f}")
-    
+
     # 分类报告
     if class_names is None:
         unique_eval_classes = np.unique(np.concatenate([y_train, y_test]))
         class_names = [f'class_{idx}' for idx in unique_eval_classes]
     unique_eval_classes = np.unique(y_test)
-    print("\n📊 分类报告:")
-    print(classification_report(y_test, y_pred_classes,
-                              labels=unique_eval_classes,
-                              target_names=[class_names[i] for i in unique_eval_classes]))
+    textual_report = classification_report(
+        y_test,
+        y_pred_classes,
+        labels=unique_eval_classes,
+        target_names=[class_names[i] for i in unique_eval_classes],
+        digits=4,
+    )
+    report_dict = classification_report(
+        y_test,
+        y_pred_classes,
+        labels=unique_eval_classes,
+        target_names=[class_names[i] for i in unique_eval_classes],
+        digits=4,
+        output_dict=True,
+    )
+    conf_matrix = confusion_matrix(y_test, y_pred_classes)
 
-    return model, scaler, test_accuracy, history
+    print("\n📊 分类报告:")
+    print(textual_report)
+
+    return model, scaler, test_accuracy, history, textual_report, report_dict, conf_matrix
 
 
 def train_cnn_model(X_train, X_test, y_train, y_test, class_names, epochs=40, batch_size=32):
@@ -910,148 +927,265 @@ def create_fpga_deployment_package(model,
     print(f"✅ FPGA部署包已创建: {output_dir}")
     return str(output_dir), hls_manifest.get('weight_statistics', {})
 
+
+def _collect_per_class_metrics(report_dict):
+    metrics = {}
+    for class_name, values in report_dict.items():
+        if class_name in {'accuracy', 'macro avg', 'weighted avg'}:
+            continue
+        metrics[class_name] = {
+            'precision': float(values.get('precision', 0.0)),
+            'recall': float(values.get('recall', 0.0)),
+            'f1_score': float(values.get('f1-score', 0.0)),
+            'support': int(values.get('support', 0)),
+        }
+    return metrics
+
+
+def _format_top_classes(metrics_dict, top_k=5):
+    if not metrics_dict:
+        return ""
+    sorted_items = sorted(metrics_dict.items(), key=lambda kv: kv[1]['f1_score'], reverse=True)
+    lines = []
+    for name, stats in sorted_items[:top_k]:
+        lines.append(
+            f"      • {name}: F1={stats['f1_score']:.4f}, 精确率={stats['precision']:.4f}, 召回率={stats['recall']:.4f}, 样本数={stats['support']}"
+        )
+    return "\n".join(lines)
+
+
+def _format_weight_summary(weight_stats):
+    if not weight_stats:
+        return ""
+    lines = []
+    for layer in weight_stats.get('conv_layers', []):
+        w = layer['weights']
+        b = layer['biases']
+        lines.append(
+            f"      • {layer['name']} 卷积权重范围[{w['min']:.4f}, {w['max']:.4f}] (μ={w['mean']:.4f}, σ={w['std']:.4f}); 偏置范围[{b['min']:.4f}, {b['max']:.4f}]"
+        )
+    for layer in weight_stats.get('dense_layers', []):
+        w = layer['weights']
+        b = layer['biases']
+        lines.append(
+            f"      • {layer['name']} 全连接权重范围[{w['min']:.4f}, {w['max']:.4f}] (μ={w['mean']:.4f}, σ={w['std']:.4f}); 偏置范围[{b['min']:.4f}, {b['max']:.4f}]"
+        )
+    return "\n".join(lines)
+
+
+def _save_scaler(scaler, path):
+    np.savez_compressed(
+        path,
+        mean=scaler.mean_,
+        scale=scaler.scale_,
+        var=getattr(scaler, 'var_', np.square(scaler.scale_)),
+    )
+
+
 def main():
     """主程序 - 使用真实数据训练"""
-    start_time = time.time()
-    
+
+    parser = argparse.ArgumentParser(description='MIT-BIH ECG training pipeline')
+    parser.add_argument(
+        '--model',
+        choices=['cnn', 'mlp', 'both'],
+        default='cnn',
+        help='选择训练CNN、MLP或同时训练二者',
+    )
+    parser.add_argument(
+        '--max-records',
+        type=int,
+        default=10,
+        help='从MIT-BIH数据集中加载的记录数量（默认10）',
+    )
+    args = parser.parse_args()
+
     try:
-        # 第1步：加载真实MIT-BIH数据
         print("📊 加载MIT-BIH数据库...")
-        
-        # 使用绝对路径避免路径问题
+
         current_dir = os.path.dirname(os.path.abspath(__file__))
         data_path = os.path.join(current_dir, 'data')
         loader = MITBIHDataLoader(data_path)
-        beats, labels, label_mapping, class_names = loader.load_all_data(max_records=10)  # 先用10个记录测试
+        beats, labels, label_mapping, class_names = loader.load_all_data(max_records=args.max_records)
 
-        # 统计类别分布
         unique_indices, counts = np.unique(labels, return_counts=True)
         class_distribution = {class_names[idx]: int(count) for idx, count in zip(unique_indices, counts)}
-        
-        # 第2步：生成小波张量
-        wavelet_tensors = create_wavelet_tensors(beats)
-        print(f"   ✅ 小波张量形状: {wavelet_tensors.shape}")
 
-        # 第3步：数据分割
-        X_train, X_test, y_train, y_test = train_test_split(
-            wavelet_tensors, labels, test_size=0.2, random_state=42, stratify=labels
-        )
-        print(f"   ✅ 训练集: {X_train.shape[0]}, 测试集: {X_test.shape[0]}")
+        executed_models = []
 
-        # 第4步：训练CNN模型
-        model, test_accuracy, history, textual_report, report_dict, conf_matrix = train_cnn_model(
-            X_train, X_test, y_train, y_test, class_names=class_names
-        )
+        if args.model in {'cnn', 'both'}:
+            print("\n=== Wavelet-CNN 训练流程 ===")
+            cnn_start = time.time()
 
-        per_class_metrics = {}
-        for class_name, metrics in report_dict.items():
-            if class_name in {'accuracy', 'macro avg', 'weighted avg'}:
-                continue
-            per_class_metrics[class_name] = {
-                'precision': float(metrics.get('precision', 0.0)),
-                'recall': float(metrics.get('recall', 0.0)),
-                'f1_score': float(metrics.get('f1-score', 0.0)),
-                'support': int(metrics.get('support', 0))
+            wavelet_tensors = create_wavelet_tensors(beats)
+            print(f"   ✅ 小波张量形状: {wavelet_tensors.shape}")
+
+            X_train, X_test, y_train, y_test = train_test_split(
+                wavelet_tensors, labels, test_size=0.2, random_state=42, stratify=labels
+            )
+            print(f"   ✅ 训练集: {X_train.shape[0]}, 测试集: {X_test.shape[0]}")
+
+            model, test_accuracy, history, textual_report, report_dict, conf_matrix = train_cnn_model(
+                X_train, X_test, y_train, y_test, class_names=class_names
+            )
+
+            per_class_metrics = _collect_per_class_metrics(report_dict)
+
+            timestamp = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_cnn"
+
+            quantized_dir = Path('outputs/quantized_models')
+            quantized_dir.mkdir(parents=True, exist_ok=True)
+            quant_model_path, quant_details = quantize_model_for_fpga(
+                model, X_train, str(quantized_dir), timestamp
+            )
+
+            fpga_output_dir, weight_statistics = create_fpga_deployment_package(
+                model=model,
+                class_names=class_names,
+                label_mapping=label_mapping,
+                quant_model_path=quant_model_path,
+                quantization_details=quant_details,
+                history=history,
+                textual_report=textual_report,
+                conf_matrix=conf_matrix,
+                class_distribution=class_distribution,
+                timestamp=timestamp,
+                per_class_metrics=per_class_metrics,
+            )
+
+            history_data = {}
+            if history is not None and hasattr(history, 'history'):
+                history_data = {k: [float(x) for x in v] for k, v in history.history.items()}
+
+            results = {
+                'timestamp': timestamp,
+                'training_time': time.time() - cnn_start,
+                'total_beats': int(len(beats)),
+                'feature_tensor_shape': list(wavelet_tensors.shape[1:]),
+                'test_accuracy': float(test_accuracy),
+                'num_parameters': int(model.count_params()),
+                'data_source': 'MIT-BIH Arrhythmia Database',
+                'technology_stack': 'Continuous Wavelet Transform + 2D CNN',
+                'class_names': class_names,
+                'class_distribution': class_distribution,
+                'label_mapping': label_mapping,
+                'quantization': quant_details,
+                'classification_report': report_dict,
+                'confusion_matrix': conf_matrix.tolist(),
+                'training_history': history_data,
+                'fpga_package': fpga_output_dir,
+                'tflite_model': quant_model_path,
+                'per_class_metrics': per_class_metrics,
+                'weight_statistics': weight_statistics,
             }
 
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            os.makedirs('outputs/experiments', exist_ok=True)
+            with open(f'outputs/experiments/cnn_training_{timestamp}.json', 'w', encoding='utf-8') as f:
+                json.dump(results, f, indent=2, ensure_ascii=False)
 
-        # 第5步：量化模型并生成FPGA部署包
-        quantized_dir = Path('outputs/quantized_models')
-        quantized_dir.mkdir(parents=True, exist_ok=True)
-        quant_model_path, quant_details = quantize_model_for_fpga(
-            model, X_train, str(quantized_dir), timestamp
-        )
+            os.makedirs('outputs', exist_ok=True)
+            model_path = f'outputs/trained_ecg_cnn_{timestamp}.h5'
+            model.save(model_path)
 
-        fpga_output_dir, weight_statistics = create_fpga_deployment_package(
-            model=model,
-            class_names=class_names,
-            label_mapping=label_mapping,
-            quant_model_path=quant_model_path,
-            quantization_details=quant_details,
-            history=history,
-            textual_report=textual_report,
-            conf_matrix=conf_matrix,
-            class_distribution=class_distribution,
-            timestamp=timestamp,
-            per_class_metrics=per_class_metrics
-        )
+            print("\n" + "=" * 70)
+            print("✅ Wavelet-CNN 训练完成！")
+            print(f"📊 数据源: MIT-BIH心律失常数据库")
+            print(f"💓 训练心拍数: {len(beats):,}")
+            print(f"🔧 小波张量尺寸: {wavelet_tensors.shape[1:]}")
+            print(f"🧠 测试准确率: {test_accuracy:.4f}")
+            print(f"⏱️  训练耗时: {results['training_time']:.1f} 秒")
+            print(f"📁 FPGA部署包: {fpga_output_dir}")
+            print(f"💾 模型文件: {model_path}")
+            print(f"🧮 支持心律类型: {', '.join(class_names)}")
+            if per_class_metrics:
+                print("📈 各类别F1评分:")
+                print(_format_top_classes(per_class_metrics, top_k=min(10, len(per_class_metrics))))
+            if weight_statistics:
+                print("⚖️ 权重统计:")
+                print(_format_weight_summary(weight_statistics))
+            print("🎯 模型已适配Pynq-Z2量化部署流程，可直接复制部署目录进行验证。")
 
-        def _format_top_classes(metrics_dict, top_k=5):
-            sorted_items = sorted(metrics_dict.items(), key=lambda kv: kv[1]['f1_score'], reverse=True)
-            lines = []
-            for name, stats in sorted_items[:top_k]:
-                lines.append(f"      • {name}: F1={stats['f1_score']:.4f}, 精确率={stats['precision']:.4f}, 召回率={stats['recall']:.4f}, 样本数={stats['support']}")
-            return "\n".join(lines)
+            executed_models.append('cnn')
 
-        def _format_weight_summary(weight_stats):
-            lines = []
-            for layer in weight_stats.get('conv_layers', []):
-                w = layer['weights']
-                b = layer['biases']
-                lines.append(
-                    f"      • {layer['name']} 卷积权重范围[{w['min']:.4f}, {w['max']:.4f}] (μ={w['mean']:.4f}, σ={w['std']:.4f}); 偏置范围[{b['min']:.4f}, {b['max']:.4f}]"
-                )
-            for layer in weight_stats.get('dense_layers', []):
-                w = layer['weights']
-                b = layer['biases']
-                lines.append(
-                    f"      • {layer['name']} 全连接权重范围[{w['min']:.4f}, {w['max']:.4f}] (μ={w['mean']:.4f}, σ={w['std']:.4f}); 偏置范围[{b['min']:.4f}, {b['max']:.4f}]"
-                )
-            return "\n".join(lines)
+        if args.model in {'mlp', 'both'}:
+            print("\n=== Wavelet+Time 特征 + MLP 训练流程 ===")
+            mlp_start = time.time()
 
-        # 第6步：保存结果
-        history_data = {}
-        if history is not None and hasattr(history, 'history'):
-            history_data = {k: [float(x) for x in v] for k, v in history.history.items()}
+            feature_vectors = extract_all_features(beats)
+            print(f"   ✅ 特征向量形状: {feature_vectors.shape}")
 
-        results = {
-            'timestamp': timestamp,
-            'training_time': time.time() - start_time,
-            'total_beats': int(len(beats)),
-            'feature_tensor_shape': list(wavelet_tensors.shape[1:]),
-            'test_accuracy': float(test_accuracy),
-            'num_parameters': int(model.count_params()),
-            'data_source': 'MIT-BIH Arrhythmia Database',
-            'technology_stack': 'Continuous Wavelet Transform + 2D CNN',
-            'class_names': class_names,
-            'class_distribution': class_distribution,
-            'label_mapping': label_mapping,
-            'quantization': quant_details,
-            'classification_report': report_dict,
-            'confusion_matrix': conf_matrix.tolist(),
-            'training_history': history_data,
-            'fpga_package': fpga_output_dir,
-            'tflite_model': quant_model_path,
-            'per_class_metrics': per_class_metrics,
-            'weight_statistics': weight_statistics
-        }
+            X_train, X_test, y_train, y_test = train_test_split(
+                feature_vectors, labels, test_size=0.2, random_state=42, stratify=labels
+            )
+            print(f"   ✅ 训练集: {X_train.shape[0]}, 测试集: {X_test.shape[0]}")
 
-        os.makedirs('outputs/experiments', exist_ok=True)
-        with open(f'outputs/experiments/real_training_{timestamp}.json', 'w', encoding='utf-8') as f:
-            json.dump(results, f, indent=2, ensure_ascii=False)
+            (
+                model,
+                scaler,
+                test_accuracy,
+                history,
+                textual_report,
+                report_dict,
+                conf_matrix,
+            ) = train_model(X_train, X_test, y_train, y_test, class_names=class_names)
 
-        # 保存模型
-        os.makedirs('outputs', exist_ok=True)
-        model.save(f'outputs/trained_ecg_cnn_{timestamp}.h5')
+            per_class_metrics = _collect_per_class_metrics(report_dict)
 
-        print("\n" + "=" * 70)
-        print("✅ 基于真实MIT-BIH数据的训练完成！")
-        print(f"📊 数据源: MIT-BIH心律失常数据库")
-        print(f"💓 训练心拍数: {len(beats):,}")
-        print(f"🔧 小波张量尺寸: {wavelet_tensors.shape[1:]}")
-        print(f"🧠 训练准确率: {test_accuracy:.4f}")
-        print(f"⏱️  总训练时间: {results['training_time']:.1f} 秒")
-        print(f"📁 FPGA部署包: {fpga_output_dir}")
-        print(f"💾 模型文件: outputs/trained_ecg_cnn_{timestamp}.h5")
-        print(f"🧮 支持心律类型: {', '.join(class_names)}")
-        if per_class_metrics:
-            print("📈 各类别F1评分:")
-            print(_format_top_classes(per_class_metrics, top_k=min(10, len(per_class_metrics))))
-        if weight_statistics:
-            print("⚖️ 权重统计:")
-            print(_format_weight_summary(weight_statistics))
-        print("🎯 模型已适配Pynq-Z2量化部署流程，可直接复制部署目录进行验证。")
+            timestamp = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_mlp"
+
+            history_data = {}
+            if history is not None and hasattr(history, 'history'):
+                history_data = {k: [float(x) for x in v] for k, v in history.history.items()}
+
+            scaler_path = Path(f'outputs/mlp_scaler_{timestamp}.npz')
+            scaler_path.parent.mkdir(parents=True, exist_ok=True)
+            _save_scaler(scaler, scaler_path)
+
+            results = {
+                'timestamp': timestamp,
+                'training_time': time.time() - mlp_start,
+                'total_beats': int(len(beats)),
+                'feature_vector_dim': int(feature_vectors.shape[1]),
+                'test_accuracy': float(test_accuracy),
+                'num_parameters': int(model.count_params()),
+                'data_source': 'MIT-BIH Arrhythmia Database',
+                'technology_stack': 'Wavelet Statistical Features + Time-domain Features + MLP',
+                'class_names': class_names,
+                'class_distribution': class_distribution,
+                'label_mapping': label_mapping,
+                'classification_report': report_dict,
+                'confusion_matrix': conf_matrix.tolist(),
+                'training_history': history_data,
+                'scaler_path': str(scaler_path),
+                'per_class_metrics': per_class_metrics,
+            }
+
+            os.makedirs('outputs/experiments', exist_ok=True)
+            with open(f'outputs/experiments/mlp_training_{timestamp}.json', 'w', encoding='utf-8') as f:
+                json.dump(results, f, indent=2, ensure_ascii=False)
+
+            model_path = f'outputs/trained_ecg_mlp_{timestamp}.h5'
+            model.save(model_path)
+
+            print("\n" + "=" * 70)
+            print("✅ Wavelet+Time 特征 + MLP 训练完成！")
+            print(f"📊 数据源: MIT-BIH心律失常数据库")
+            print(f"💓 训练心拍数: {len(beats):,}")
+            print(f"🧾 特征维度: {feature_vectors.shape[1]}")
+            print(f"🧠 测试准确率: {test_accuracy:.4f}")
+            print(f"⏱️  训练耗时: {results['training_time']:.1f} 秒")
+            print(f"💾 模型文件: {model_path}")
+            print(f"📊 分类报告已写入: outputs/experiments/mlp_training_{timestamp}.json")
+            print(f"🧮 支持心律类型: {', '.join(class_names)}")
+            if per_class_metrics:
+                print("📈 各类别F1评分:")
+                print(_format_top_classes(per_class_metrics, top_k=min(10, len(per_class_metrics))))
+            print("🎯 已保留原始MLP特征工程与模型，可用于对比或迁移部署。")
+
+            executed_models.append('mlp')
+
+        if not executed_models:
+            raise RuntimeError('未选择任何模型进行训练。')
 
     except Exception as e:
         print(f"\n❌ 训练失败: {str(e)}")
