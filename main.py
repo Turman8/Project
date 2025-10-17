@@ -17,7 +17,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import classification_report, confusion_matrix
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Dropout, Conv1D, GlobalMaxPooling1D
+from tensorflow.keras.layers import Dense, Dropout, Conv2D, MaxPooling2D, BatchNormalization, Flatten
 from tensorflow.keras.optimizers import Adam
 import matplotlib.pyplot as plt
 import warnings
@@ -199,6 +199,52 @@ def extract_time_features(beat):
     ]
     return features
 
+
+def create_wavelet_tensors(beats, wavelet='morl', scales=None, output_format='2d'):
+    """根据心拍生成小波张量
+
+    Args:
+        beats (np.ndarray): 心拍集合，形状为 [N, T]
+        wavelet (str): 小波基类型
+        scales (list or np.ndarray, optional): 小波尺度
+        output_format (str): "2d" 返回 [N, H, W, C] 张量, "sequence" 返回 [N, T, C]
+
+    Returns:
+        np.ndarray: 小波张量
+    """
+
+    if scales is None:
+        scales = np.arange(1, 65)
+
+    tensors = []
+    for idx, beat in enumerate(beats):
+        if idx % 1000 == 0:
+            print(f"   生成小波张量 {idx + 1}/{len(beats)}")
+
+        beat = np.asarray(beat, dtype=np.float32)
+        beat = (beat - np.mean(beat)) / (np.std(beat) + 1e-8)
+
+        coefficients, _ = pywt.cwt(beat, scales, wavelet)
+        scalogram = np.abs(coefficients).astype(np.float32)
+
+        # 归一化到 [0, 1]
+        min_val = np.min(scalogram)
+        max_val = np.max(scalogram)
+        scalogram = (scalogram - min_val) / (max_val - min_val + 1e-8)
+
+        tensors.append(scalogram)
+
+    tensors = np.stack(tensors)
+
+    if output_format == '2d':
+        tensors = tensors[..., np.newaxis]
+    elif output_format == 'sequence':
+        tensors = np.transpose(tensors, (0, 2, 1))
+    else:
+        raise ValueError("output_format must be '2d' or 'sequence'")
+
+    return tensors.astype(np.float32)
+
 def extract_all_features(beats):
     """提取所有特征"""
     print("🔧 提取特征...")
@@ -244,6 +290,37 @@ def build_mlp_model(input_dim, num_classes):
     
     return model
 
+
+def build_cnn_model(input_shape, num_classes, learning_rate=0.001):
+    """构建基于小波张量的CNN模型"""
+    model = Sequential([
+        tf.keras.layers.Input(shape=input_shape),
+        Conv2D(32, (3, 3), padding='same', activation='relu'),
+        BatchNormalization(),
+        MaxPooling2D((2, 2)),
+        Dropout(0.25),
+        Conv2D(64, (3, 3), padding='same', activation='relu'),
+        BatchNormalization(),
+        MaxPooling2D((2, 2)),
+        Dropout(0.3),
+        Conv2D(128, (3, 3), padding='same', activation='relu'),
+        BatchNormalization(),
+        MaxPooling2D((2, 2)),
+        Dropout(0.4),
+        Flatten(),
+        Dense(128, activation='relu'),
+        Dropout(0.4),
+        Dense(num_classes, activation='softmax')
+    ])
+
+    model.compile(
+        optimizer=Adam(learning_rate=learning_rate),
+        loss='sparse_categorical_crossentropy',
+        metrics=['accuracy']
+    )
+
+    return model
+
 def train_model(X_train, X_test, y_train, y_test):
     """训练模型"""
     print("🧠 训练MLP模型...")
@@ -280,6 +357,35 @@ def train_model(X_train, X_test, y_train, y_test):
                               target_names=[class_names[i] for i in np.unique(y_test)]))
     
     return model, scaler, test_accuracy, history
+
+
+def train_cnn_model(X_train, X_test, y_train, y_test, epochs=40, batch_size=32):
+    """使用CNN训练基于小波张量的模型"""
+    print("🧠 训练CNN模型...")
+
+    model = build_cnn_model(X_train.shape[1:], len(np.unique(y_train)))
+
+    history = model.fit(
+        X_train, y_train,
+        epochs=epochs,
+        batch_size=batch_size,
+        validation_split=0.2,
+        verbose=1
+    )
+
+    test_loss, test_accuracy = model.evaluate(X_test, y_test, verbose=0)
+    y_pred = model.predict(X_test, verbose=0)
+    y_pred_classes = np.argmax(y_pred, axis=1)
+
+    print(f"\n✅ CNN训练完成!")
+    print(f"   测试准确率: {test_accuracy:.4f}")
+
+    class_names = ['N', 'L', 'R', 'A', 'V', 'F', 'P']
+    print("\n📊 分类报告:")
+    print(classification_report(y_test, y_pred_classes,
+                              target_names=[class_names[i] for i in np.unique(y_test)]))
+
+    return model, test_accuracy, history
 
 def quantize_model_for_fpga(model, X_test_scaled):
     """模型量化用于FPGA部署"""
@@ -654,58 +760,65 @@ def main():
         loader = MITBIHDataLoader(data_path)
         beats, labels, label_mapping = loader.load_all_data(max_records=10)  # 先用10个记录测试
         
-        # 第2步：提取特征
-        features = extract_all_features(beats)
-        print(f"   ✅ 特征矩阵形状: {features.shape}")
-        
+        # 第2步：生成小波张量
+        wavelet_tensors = create_wavelet_tensors(beats)
+        print(f"   ✅ 小波张量形状: {wavelet_tensors.shape}")
+
         # 第3步：数据分割
         X_train, X_test, y_train, y_test = train_test_split(
-            features, labels, test_size=0.2, random_state=42, stratify=labels
+            wavelet_tensors, labels, test_size=0.2, random_state=42, stratify=labels
         )
         print(f"   ✅ 训练集: {X_train.shape[0]}, 测试集: {X_test.shape[0]}")
-        
-        # 第4步：训练模型
-        model, scaler, test_accuracy, history = train_model(X_train, X_test, y_train, y_test)
-        
-        # 第5步：模型量化
-        X_test_scaled = scaler.transform(X_test)
-        quantized_weights, scale_factors = quantize_model_for_fpga(model, X_test_scaled)
-        
-        # 第6步：生成FPGA代码
-        model_info = generate_fpga_code(model, scaler, quantized_weights, scale_factors, test_accuracy)
-        
-        # 第7步：保存结果
+
+        # 第4步：训练CNN模型
+        model, test_accuracy, history = train_cnn_model(X_train, X_test, y_train, y_test)
+
+        # 第5步：暂不进行量化与FPGA代码生成
+        print("\n⚠️ 当前CNN模型尚未适配FPGA量化与代码生成流程，暂时跳过相关步骤。")
+
+        model_info = {
+            'model_type': 'CNN (Wavelet Scalogram)',
+            'training_accuracy': float(test_accuracy),
+            'input_shape': list(wavelet_tensors.shape[1:]),
+            'classes': ['N', 'L', 'R', 'A', 'V', 'F', 'P']
+        }
+
+        # 第6步：保存结果
         results = {
             'training_time': time.time() - start_time,
             'total_beats': int(len(beats)),
-            'feature_dimensions': int(features.shape[1]),
+            'feature_tensor_shape': list(wavelet_tensors.shape[1:]),
             'training_accuracy': float(test_accuracy),
-            'model_architecture': [int(x) for x in model_info['layer_architecture']],
+            'model_architecture': model_info.get('model_architecture', []),
             'data_source': 'MIT-BIH Real Data',
-            'technology_stack': 'Wavelet + Time Features + MLP',
+            'technology_stack': 'Wavelet Scalogram + CNN',
             'class_distribution': {str(k): int(v) for k, v in zip(*np.unique(labels, return_counts=True))}
         }
-        
+
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        os.makedirs('outputs/experiments', exist_ok=True)
         with open(f'outputs/experiments/real_training_{timestamp}.json', 'w', encoding='utf-8') as f:
             json.dump(results, f, indent=2, ensure_ascii=False)
-        
+
         # 保存模型
+        os.makedirs('outputs', exist_ok=True)
         model.save(f'outputs/trained_ecg_model_{timestamp}.h5')
-        
-        # 创建FPGA部署包
-        fpga_output_dir = create_fpga_deployment_package(model, scaler, timestamp)
+
+        fpga_output_dir = None
         
         print("\n" + "=" * 70)
         print("✅ 基于真实MIT-BIH数据的训练完成！")
         print(f"📊 数据源: MIT-BIH心律失常数据库")
         print(f"💓 训练心拍数: {len(beats):,}")
-        print(f"🔧 特征维度: {features.shape[1]}")
+        print(f"🔧 小波张量尺寸: {wavelet_tensors.shape[1:]}")
         print(f"🧠 训练准确率: {test_accuracy:.4f}")
         print(f"⏱️  总训练时间: {results['training_time']:.1f} 秒")
-        print(f"📁 FPGA部署包: {fpga_output_dir}")
+        if fpga_output_dir:
+            print(f"📁 FPGA部署包: {fpga_output_dir}")
+        else:
+            print("📁 FPGA部署包: 暂未生成（CNN模型尚未适配）")
         print(f"💾 模型文件: outputs/trained_ecg_model_{timestamp}.h5")
-        print("🎯 真实数据训练完成，准确率可靠，FPGA就绪！")
+        print("🎯 真实数据训练完成，后续可继续针对FPGA部署进行优化。")
         
     except Exception as e:
         print(f"\n❌ 训练失败: {str(e)}")
