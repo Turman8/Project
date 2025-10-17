@@ -9,16 +9,21 @@ import sys
 import time
 from datetime import datetime
 import json
+import shutil
+from pathlib import Path
+import textwrap
 import pywt
 from scipy import signal
 import wfdb
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.utils import class_weight
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout, Conv2D, MaxPooling2D, BatchNormalization, Flatten
 from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 import matplotlib.pyplot as plt
 import warnings
 warnings.filterwarnings('ignore')
@@ -33,28 +38,34 @@ class MITBIHDataLoader:
         self.data_path = data_path
         self.fs = 360  # MIT-BIH采样频率
         
-        # MIT-BIH心拍类型映射
-        self.beat_labels = {
-            'N': 0,  # Normal
-            'L': 1,  # Left bundle branch block  
-            'R': 2,  # Right bundle branch block
-            'A': 3,  # Atrial premature
-            'a': 3,  # Aberrated atrial premature
-            'J': 3,  # Nodal (junctional) premature
-            'S': 3,  # Supraventricular premature
-            'V': 4,  # Premature ventricular contraction
-            'F': 5,  # Fusion of ventricular and normal
-            'e': 3,  # Atrial escape
-            'j': 3,  # Nodal (junctional) escape
-            'E': 4,  # Ventricular escape
-            '/': 6,  # Paced beat
-            'f': 6,  # Fusion of paced and normal
-            'x': 6,  # Non-conducted P-wave
-            'Q': 6,  # Unclassifiable
-            '|': 6   # Isolated QRS-like artifact
+        # MIT-BIH心拍类型映射到更丰富的心律类别，尽可能覆盖更多心律失常
+        self.symbol_to_class = {
+            'N': 'Normal',
+            'L': 'LeftBundleBranchBlock',
+            'R': 'RightBundleBranchBlock',
+            'B': 'BundleBranchBlock',
+            'A': 'AtrialPremature',
+            'a': 'AberratedAtrialPremature',
+            'J': 'JunctionalPremature',
+            'S': 'SupraventricularPremature',
+            'e': 'AtrialEscape',
+            'j': 'JunctionalEscape',
+            'V': 'PrematureVentricular',
+            'E': 'VentricularEscape',
+            'F': 'Fusion',
+            '/': 'Paced',
+            'f': 'FusionPaced',
+            'x': 'NonConductedPWave',
+            'Q': 'Unclassifiable',
+            '|': 'IsolatedQRSLike',
+            '!': 'VentricularFlutter',
+            '[': 'VentricularFlutterStart',
+            ']': 'VentricularFlutterEnd',
+            'p': 'PacedPremature',
+            't': 'TWaveAbnormality'
         }
-        
-        self.class_names = ['N', 'L', 'R', 'A', 'V', 'F', 'P']
+
+        self.class_names = sorted(set(self.symbol_to_class.values()))
         
     def get_available_records(self):
         """获取可用的记录文件"""
@@ -90,7 +101,7 @@ class MITBIHDataLoader:
         
         for i, (sample, symbol) in enumerate(zip(annotation.sample, annotation.symbol)):
             # 跳过非心拍标注
-            if symbol not in self.beat_labels:
+            if symbol not in self.symbol_to_class:
                 continue
                 
             # 提取心拍片段
@@ -101,7 +112,7 @@ class MITBIHDataLoader:
                 beat = signal_data[start:end]
                 if len(beat) == 300:  # 确保长度一致
                     beats.append(beat)
-                    labels.append(self.beat_labels[symbol])
+                    labels.append(self.symbol_to_class[symbol])
         
         return np.array(beats), np.array(labels)
     
@@ -130,19 +141,22 @@ class MITBIHDataLoader:
         if all_beats:
             all_beats = np.vstack(all_beats)
             all_labels = np.hstack(all_labels)
-            
+
             # 重新映射标签到连续范围 0-(n-1)
-            unique_labels = np.unique(all_labels)
-            label_mapping = {old_label: new_label for new_label, old_label in enumerate(unique_labels)}
-            all_labels = np.array([label_mapping[label] for label in all_labels])
-            
+            unique_label_names = sorted(np.unique(all_labels))
+            label_mapping = {label_name: idx for idx, label_name in enumerate(unique_label_names)}
+            numeric_labels = np.array([label_mapping[label] for label in all_labels], dtype=np.int32)
+
+            # 更新可用类别
+            self.class_names = unique_label_names
+
             print(f"   ✅ 总共加载了 {len(all_beats)} 个心拍")
-            unique, counts = np.unique(all_labels, return_counts=True)
-            for label, count in zip(unique, counts):
-                original_label = [k for k, v in label_mapping.items() if v == label][0]
-                print(f"      类别 {self.class_names[original_label]}: {count} 个")
-            
-            return all_beats, all_labels, label_mapping
+            unique, counts = np.unique(numeric_labels, return_counts=True)
+            for label_idx, count in zip(unique, counts):
+                class_name = unique_label_names[label_idx]
+                print(f"      类别 {class_name}: {count} 个")
+
+            return all_beats, numeric_labels, label_mapping, unique_label_names
         else:
             raise Exception("没有成功加载任何数据")
 
@@ -321,10 +335,10 @@ def build_cnn_model(input_shape, num_classes, learning_rate=0.001):
 
     return model
 
-def train_model(X_train, X_test, y_train, y_test):
+def train_model(X_train, X_test, y_train, y_test, class_names=None):
     """训练模型"""
     print("🧠 训练MLP模型...")
-    
+
     # 特征标准化
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
@@ -351,25 +365,44 @@ def train_model(X_train, X_test, y_train, y_test):
     print(f"   测试准确率: {test_accuracy:.4f}")
     
     # 分类报告
-    class_names = ['N', 'L', 'R', 'A', 'V', 'F', 'P']
+    if class_names is None:
+        unique_eval_classes = np.unique(np.concatenate([y_train, y_test]))
+        class_names = [f'class_{idx}' for idx in unique_eval_classes]
+    unique_eval_classes = np.unique(y_test)
     print("\n📊 分类报告:")
-    print(classification_report(y_test, y_pred_classes, 
-                              target_names=[class_names[i] for i in np.unique(y_test)]))
-    
+    print(classification_report(y_test, y_pred_classes,
+                              labels=unique_eval_classes,
+                              target_names=[class_names[i] for i in unique_eval_classes]))
+
     return model, scaler, test_accuracy, history
 
 
-def train_cnn_model(X_train, X_test, y_train, y_test, epochs=40, batch_size=32):
+def train_cnn_model(X_train, X_test, y_train, y_test, class_names, epochs=40, batch_size=32):
     """使用CNN训练基于小波张量的模型"""
     print("🧠 训练CNN模型...")
 
-    model = build_cnn_model(X_train.shape[1:], len(np.unique(y_train)))
+    num_classes = len(class_names)
+    model = build_cnn_model(X_train.shape[1:], num_classes)
+
+    # 处理类别不平衡，计算类别权重
+    unique_classes = np.unique(y_train)
+    class_weights = class_weight.compute_class_weight(class_weight='balanced',
+                                                      classes=unique_classes,
+                                                      y=y_train)
+    class_weight_dict = {cls: weight for cls, weight in zip(unique_classes, class_weights)}
+
+    callbacks = [
+        EarlyStopping(monitor='val_loss', patience=6, restore_best_weights=True),
+        ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, min_lr=1e-5)
+    ]
 
     history = model.fit(
         X_train, y_train,
         epochs=epochs,
         batch_size=batch_size,
         validation_split=0.2,
+        class_weight=class_weight_dict,
+        callbacks=callbacks,
         verbose=1
     )
 
@@ -380,371 +413,309 @@ def train_cnn_model(X_train, X_test, y_train, y_test, epochs=40, batch_size=32):
     print(f"\n✅ CNN训练完成!")
     print(f"   测试准确率: {test_accuracy:.4f}")
 
-    class_names = ['N', 'L', 'R', 'A', 'V', 'F', 'P']
+    # 分类报告与混淆矩阵
+    unique_eval_classes = np.unique(y_test)
+    target_names = [class_names[idx] for idx in unique_eval_classes]
+    textual_report = classification_report(y_test, y_pred_classes,
+                                           labels=unique_eval_classes,
+                                           target_names=target_names,
+                                           digits=4)
+    report_dict = classification_report(y_test, y_pred_classes,
+                                        labels=unique_eval_classes,
+                                        target_names=target_names,
+                                        digits=4,
+                                        output_dict=True)
+    conf_matrix = confusion_matrix(y_test, y_pred_classes)
+
     print("\n📊 分类报告:")
-    print(classification_report(y_test, y_pred_classes,
-                              target_names=[class_names[i] for i in np.unique(y_test)]))
+    print(textual_report)
 
-    return model, test_accuracy, history
+    return model, test_accuracy, history, textual_report, report_dict, conf_matrix
 
-def quantize_model_for_fpga(model, X_test_scaled):
-    """模型量化用于FPGA部署"""
-    print("⚡ 模型量化...")
-    
-    # 获取模型权重
-    weights = model.get_weights()
-    
-    # 16位定点量化
-    quantized_weights = []
-    scale_factors = []
-    
-    for w in weights:
-        w_min, w_max = np.min(w), np.max(w)
-        if w_max > w_min:
-            scale = 32767 / (w_max - w_min)
-            quantized_w = np.clip(np.round((w - w_min) * scale), 0, 32767)
-            quantized_weights.append(quantized_w.astype(np.int16))
-            scale_factors.append({'min': w_min, 'scale': scale})
-        else:
-            quantized_weights.append(w.astype(np.int16))
-            scale_factors.append({'min': w_min, 'scale': 1.0})
-    
-    # 测试量化精度损失
-    original_pred = model.predict(X_test_scaled[:100])
-    
-    print(f"   ✅ 权重量化完成")
-    
-    return quantized_weights, scale_factors
+def quantize_model_for_fpga(model, representative_data, output_dir, timestamp, calibration_size=256):
+    """使用TensorFlow Lite进行整型量化，便于在Pynq-Z2上部署"""
 
-def generate_fpga_code(model, scaler, quantized_weights, scale_factors, test_accuracy):
-    """生成FPGA部署代码"""
-    print("📁 生成FPGA部署代码...")
-    
-    output_dir = 'outputs/fpga_deployment'
+    print("⚡ 模型量化 (TensorFlow Lite INT8)...")
+
+    if representative_data is None or len(representative_data) == 0:
+        raise ValueError("代表性数据集为空，无法执行量化")
+
     os.makedirs(output_dir, exist_ok=True)
-    
-    # 获取模型结构
-    layer_sizes = []
-    for layer in model.layers:
-        if hasattr(layer, 'units'):
-            layer_sizes.append(layer.units)
-    
-    input_dim = model.input_shape[1]
-    
-    # 生成HLS C++代码
-    with open(f'{output_dir}/ecg_trained_classifier.cpp', 'w', encoding='utf-8') as f:
-        f.write(f"""// ECG分类器 - 基于真实MIT-BIH数据训练
-// 训练准确率: {test_accuracy:.4f}
-#include "ap_int.h"
-#include "ap_fixed.h"
-#include <hls_math.h>
 
-#define INPUT_DIM {input_dim}
-#define HIDDEN1_DIM {layer_sizes[0] if len(layer_sizes) > 0 else 128}
-#define HIDDEN2_DIM {layer_sizes[1] if len(layer_sizes) > 1 else 64}
-#define HIDDEN3_DIM {layer_sizes[2] if len(layer_sizes) > 2 else 32}
-#define OUTPUT_DIM {layer_sizes[-1] if layer_sizes else 7}
+    representative_data = np.asarray(representative_data, dtype=np.float32)
+    calibration_size = min(calibration_size, representative_data.shape[0])
+    calibration_samples = representative_data[:calibration_size]
 
-typedef ap_fixed<16, 8> fixed_t;
-typedef ap_fixed<32, 16> acc_t;
+    def representative_dataset():
+        for sample in calibration_samples:
+            sample = sample.astype(np.float32)
+            yield [np.expand_dims(sample, axis=0)]
 
-// 训练得到的权重 (量化后)
-// 注意: 实际部署时需要包含完整的权重数据
+    converter = tf.lite.TFLiteConverter.from_keras_model(model)
+    converter.optimizations = [tf.lite.Optimize.DEFAULT]
+    converter.representative_dataset = representative_dataset
+    converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
+    converter.inference_input_type = tf.int8
+    converter.inference_output_type = tf.int8
 
-// ReLU激活函数
-fixed_t relu(fixed_t x) {{
-    return (x > 0) ? x : 0;
-}}
+    quant_mode = 'int8'
+    try:
+        tflite_model = converter.convert()
+    except Exception as exc:
+        print(f"   ⚠️ INT8量化失败 ({exc})，尝试Float16量化作为回退方案")
+        converter = tf.lite.TFLiteConverter.from_keras_model(model)
+        converter.optimizations = [tf.lite.Optimize.DEFAULT]
+        converter.target_spec.supported_types = [tf.float16]
+        quant_mode = 'float16'
+        tflite_model = converter.convert()
 
-// 主分类函数
-void ecg_classify_trained(
-    fixed_t features[INPUT_DIM], 
-    fixed_t probabilities[OUTPUT_DIM], 
-    int* predicted_class
-) {{
-    #pragma HLS INTERFACE m_axi port=features bundle=gmem0
-    #pragma HLS INTERFACE m_axi port=probabilities bundle=gmem1
-    #pragma HLS INTERFACE m_axi port=predicted_class bundle=gmem2
-    #pragma HLS INTERFACE s_axilite port=return
-    
-    // 第一层
-    fixed_t hidden1[HIDDEN1_DIM];
-    #pragma HLS ARRAY_PARTITION variable=hidden1 complete
-    
-    for(int i = 0; i < HIDDEN1_DIM; i++) {{
-        #pragma HLS UNROLL factor=4
-        acc_t sum = 0;  // bias会在实际部署时添加
-        
-        for(int j = 0; j < INPUT_DIM; j++) {{
-            #pragma HLS PIPELINE
-            // sum += features[j] * weights1[j][i];  // 实际权重
-            sum += features[j] * 0.1;  // 占位符
-        }}
-        
-        hidden1[i] = relu(sum);
-    }}
-    
-    // 第二层
-    fixed_t hidden2[HIDDEN2_DIM];
-    #pragma HLS ARRAY_PARTITION variable=hidden2 complete
-    
-    for(int i = 0; i < HIDDEN2_DIM; i++) {{
-        #pragma HLS UNROLL factor=4
-        acc_t sum = 0;
-        
-        for(int j = 0; j < HIDDEN1_DIM; j++) {{
-            #pragma HLS PIPELINE
-            sum += hidden1[j] * 0.1;  // 占位符
-        }}
-        
-        hidden2[i] = relu(sum);
-    }}
-    
-    // 第三层
-    fixed_t hidden3[HIDDEN3_DIM];
-    #pragma HLS ARRAY_PARTITION variable=hidden3 complete
-    
-    for(int i = 0; i < HIDDEN3_DIM; i++) {{
-        #pragma HLS UNROLL factor=4
-        acc_t sum = 0;
-        
-        for(int j = 0; j < HIDDEN2_DIM; j++) {{
-            #pragma HLS PIPELINE
-            sum += hidden2[j] * 0.1;  // 占位符
-        }}
-        
-        hidden3[i] = relu(sum);
-    }}
-    
-    // 输出层 (Softmax)
-    fixed_t output[OUTPUT_DIM];
-    fixed_t max_val = -1000;
-    
-    for(int i = 0; i < OUTPUT_DIM; i++) {{
-        #pragma HLS UNROLL
-        acc_t sum = 0;
-        
-        for(int j = 0; j < HIDDEN3_DIM; j++) {{
-            #pragma HLS PIPELINE
-            sum += hidden3[j] * 0.1;  // 占位符
-        }}
-        
-        output[i] = sum;
-        if(output[i] > max_val) max_val = output[i];
-    }}
-    
-    // 简化的Softmax
-    fixed_t sum_exp = 0;
-    for(int i = 0; i < OUTPUT_DIM; i++) {{
-        probabilities[i] = hls::exp(output[i] - max_val);
-        sum_exp += probabilities[i];
-    }}
-    
-    for(int i = 0; i < OUTPUT_DIM; i++) {{
-        probabilities[i] = probabilities[i] / sum_exp;
-    }}
-    
-    // 找出最大概率类别
-    fixed_t max_prob = probabilities[0];
-    *predicted_class = 0;
-    
-    for(int i = 1; i < OUTPUT_DIM; i++) {{
-        if(probabilities[i] > max_prob) {{
-            max_prob = probabilities[i];
-            *predicted_class = i;
-        }}
-    }}
-}}
-""")
-    
-    # 生成模型信息
-    model_info = {
-        "model_type": "MLP (Trained on MIT-BIH)",
-        "training_accuracy": float(test_accuracy),
-        "input_features": int(input_dim),
-        "layer_architecture": layer_sizes,
-        "quantization": "16-bit fixed point",
-        "fpga_resources": {
-            "DSP48E1": sum(layer_sizes) + input_dim,
-            "BRAM_18K": len(layer_sizes) * 2,
-            "LUT": sum(layer_sizes) * 100,
-            "FF": sum(layer_sizes) * 50,
-            "max_frequency_mhz": 100,
-            "estimated_power_mw": 1200,
-            "latency_cycles": len(layer_sizes) * 10,
-            "throughput_samples_per_second": 1000
-        },
-        "data_source": "MIT-BIH Arrhythmia Database",
-        "feature_extraction": "Wavelet + Time Domain",
-        "classes": ["N", "L", "R", "A", "V", "F", "P"]
+    quant_model_path = os.path.join(output_dir, f"ecg_cnn_{quant_mode}_{timestamp}.tflite")
+    with open(quant_model_path, 'wb') as f:
+        f.write(tflite_model)
+
+    quantization_details = {
+        'mode': quant_mode,
+        'calibration_samples': int(calibration_size),
+        'tflite_path': quant_model_path,
+        'tflite_size_bytes': len(tflite_model)
     }
-    
-    with open(f'{output_dir}/trained_model_info.json', 'w', encoding='utf-8') as f:
-        json.dump(model_info, f, indent=2, ensure_ascii=False)
-    
-    # 生成README
-    with open(f'{output_dir}/README.md', 'w', encoding='utf-8') as f:
-        f.write(f"""# ECG分类器 - 基于真实MIT-BIH数据训练
 
-## 模型信息
-- **数据源**: MIT-BIH心律失常数据库
-- **训练准确率**: {test_accuracy:.4f}
-- **特征**: 小波特征 + 时域特征 ({input_dim} 维)
-- **架构**: 深度神经网络 {layer_sizes}
+    print(f"   ✅ 量化完成，输出文件: {quant_model_path}")
 
-## 训练数据
-- 使用真实MIT-BIH心电图数据
-- 包含多种心律失常类型
-- 经过专业标注的医疗数据
+    return quant_model_path, quantization_details
 
-## FPGA实现
-- 16位定点数运算
-- 流水线并行处理
-- 预估延迟: {len(layer_sizes) * 10} 时钟周期
-- 预估吞吐量: 1000 samples/s
 
-## 部署准备
-1. 权重数据需要从训练好的模型中提取
-2. 使用Vivado HLS进行综合
-3. 集成到完整的ECG监护系统
 
-## 准确率验证
-训练准确率达到 {test_accuracy:.2%}，满足临床应用需求。
-""")
-    
-    print(f"   ✅ FPGA代码已生成到: {output_dir}")
-    return model_info
+def export_cnn_weights_for_hls(model, output_dir):
+    """导出CNN权重为HLS友好的格式 (NPZ + 头文件)"""
 
-def export_weights_for_hls(model, output_path='FPGA/hls_source/weights.h'):
-    """
-    导出训练好的权重到HLS头文件格式
-    """
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    
-    with open(output_path, 'w') as f:
-        f.write("#ifndef WEIGHTS_H\n")
-        f.write("#define WEIGHTS_H\n\n")
-        f.write("// 训练好的神经网络权重和偏置\n")
-        f.write("// 精度: 16位定点数\n\n")
-        
-        # 获取所有层的权重
-        for i, layer in enumerate(model.layers):
-            if hasattr(layer, 'get_weights') and layer.get_weights():
-                weights = layer.get_weights()
-                layer_name = layer.name.replace('/', '_').replace('-', '_')
-                
-                # 权重矩阵
-                if len(weights) > 0:
-                    w = weights[0]
-                    f.write(f"// Layer {i+1}: {layer_name} weights\n")
-                    f.write(f"const float {layer_name}_weights[{w.size}] = {{\n")
-                    
-                    # 展平权重并写入
-                    w_flat = w.flatten()
-                    for j, val in enumerate(w_flat):
-                        if j % 8 == 0:
-                            f.write("    ")
-                        f.write(f"{val:.6f}f")
-                        if j < len(w_flat) - 1:
-                            f.write(", ")
-                        if (j + 1) % 8 == 0 or j == len(w_flat) - 1:
-                            f.write("\n")
-                    f.write("};\n\n")
-                    
-                    # 权重维度信息
-                    f.write(f"const int {layer_name}_weights_rows = {w.shape[0]};\n")
-                    f.write(f"const int {layer_name}_weights_cols = {w.shape[1] if len(w.shape) > 1 else 1};\n\n")
-                
-                # 偏置向量
-                if len(weights) > 1:
-                    b = weights[1]
-                    f.write(f"// Layer {i+1}: {layer_name} biases\n")
-                    f.write(f"const float {layer_name}_biases[{b.size}] = {{\n")
-                    
-                    for j, val in enumerate(b):
-                        if j % 8 == 0:
-                            f.write("    ")
-                        f.write(f"{val:.6f}f")
-                        if j < len(b) - 1:
-                            f.write(", ")
-                        if (j + 1) % 8 == 0 or j == len(b) - 1:
-                            f.write("\n")
-                    f.write("};\n\n")
-        
-        f.write("#endif // WEIGHTS_H\n")
-    
-    print(f"✅ 权重已导出到: {output_path}")
-    return output_path
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
 
-def create_fpga_deployment_package(model, feature_scaler, timestamp):
-    """
-    创建完整的FPGA部署包
-    """
-    print("\n🔧 创建FPGA部署包...")
-    
-    # 创建输出目录
-    output_dir = f"outputs/fpga_deployment_{timestamp}"
-    os.makedirs(output_dir, exist_ok=True)
-    
-    # 1. 导出权重
-    weights_file = export_weights_for_hls(model, f"{output_dir}/weights.h")
-    
-    # 2. 导出标准化参数
-    scaler_params_file = f"{output_dir}/scaler_params.h"
-    with open(scaler_params_file, 'w') as f:
-        f.write("#ifndef SCALER_PARAMS_H\n")
-        f.write("#define SCALER_PARAMS_H\n\n")
-        f.write("// 特征标准化参数\n")
-        f.write(f"const int FEATURE_DIM = {len(feature_scaler.mean_)};\n\n")
-        
-        # 均值
-        f.write("const float feature_mean[FEATURE_DIM] = {\n")
-        for i, val in enumerate(feature_scaler.mean_):
-            if i % 4 == 0:
-                f.write("    ")
-            f.write(f"{val:.6f}f")
-            if i < len(feature_scaler.mean_) - 1:
-                f.write(", ")
-            if (i + 1) % 4 == 0 or i == len(feature_scaler.mean_) - 1:
-                f.write("\n")
-        f.write("};\n\n")
-        
-        # 标准差
-        f.write("const float feature_std[FEATURE_DIM] = {\n")
-        for i, val in enumerate(feature_scaler.scale_):
-            if i % 4 == 0:
-                f.write("    ")
-            f.write(f"{val:.6f}f")
-            if i < len(feature_scaler.scale_) - 1:
-                f.write(", ")
-            if (i + 1) % 4 == 0 or i == len(feature_scaler.scale_) - 1:
-                f.write("\n")
-        f.write("};\n\n")
-        f.write("#endif // SCALER_PARAMS_H\n")
-    
-    # 3. 创建部署说明文档
-    readme_file = f"{output_dir}/FPGA_DEPLOYMENT_README.md"
-    with open(readme_file, 'w', encoding='utf-8') as f:
-        f.write("# ECG分类器FPGA部署指南\n\n")
-        f.write("## 模型信息\n")
-        f.write(f"- 训练时间: {timestamp}\n")
-        f.write(f"- 输入维度: 46 (36小波特征 + 10时域特征)\n")
-        f.write(f"- 输出类别: 6类心拍类型\n")
-        f.write(f"- 数据类型: 16位定点数\n\n")
-        
-        f.write("## 文件说明\n")
-        f.write("- `weights.h`: 神经网络权重和偏置\n")
-        f.write("- `scaler_params.h`: 特征标准化参数\n")
-        f.write("- 使用Vitis HLS 2024.1进行综合\n\n")
-        
-        f.write("## 部署步骤\n")
-        f.write("1. 将weights.h和scaler_params.h复制到HLS项目\n")
-        f.write("2. 更新ecg_trained_classifier.cpp中的权重引用\n")
-        f.write("3. 运行HLS综合和导出IP\n")
-        f.write("4. 在Vivado中集成IP核\n")
-    
+    weight_tensors = {}
+    header_lines = ["#ifndef CNN_WEIGHTS_H", "#define CNN_WEIGHTS_H", ""]
+
+    for idx, layer in enumerate(model.layers):
+        layer_weights = layer.get_weights()
+        if not layer_weights:
+            continue
+
+        layer_name = f"layer_{idx}_{layer.name}".replace('/', '_').replace('-', '_')
+        weights = layer_weights[0].astype(np.float32)
+        weight_tensors[f"{layer_name}_weights"] = weights
+
+        header_lines.append(f"// Layer {idx}: {layer.name} weights")
+        header_lines.append(f"const int {layer_name}_weights_rank = {weights.ndim};")
+        header_lines.append(
+            f"const int {layer_name}_weights_shape[{weights.ndim}] = {{{', '.join(str(dim) for dim in weights.shape)}}};")
+        header_lines.append(f"const float {layer_name}_weights[{weights.size}] = {{")
+        flat_weights = weights.flatten()
+        for start_idx in range(0, flat_weights.size, 8):
+            chunk = flat_weights[start_idx:start_idx + 8]
+            chunk_str = ", ".join(f"{val:.8e}f" for val in chunk)
+            suffix = ',' if start_idx + 8 < flat_weights.size else ''
+            header_lines.append(f"    {chunk_str}{suffix}")
+        header_lines.append("};")
+        header_lines.append("")
+
+        if len(layer_weights) > 1:
+            biases = layer_weights[1].astype(np.float32)
+            weight_tensors[f"{layer_name}_biases"] = biases
+            header_lines.append(f"const int {layer_name}_biases_length = {biases.size};")
+            header_lines.append(f"const float {layer_name}_biases[{biases.size}] = {{")
+            flat_biases = biases.flatten()
+            for start_idx in range(0, flat_biases.size, 8):
+                chunk = flat_biases[start_idx:start_idx + 8]
+                chunk_str = ", ".join(f"{val:.8e}f" for val in chunk)
+                suffix = ',' if start_idx + 8 < flat_biases.size else ''
+                header_lines.append(f"    {chunk_str}{suffix}")
+            header_lines.append("};")
+            header_lines.append("")
+
+    header_lines.append("#endif // CNN_WEIGHTS_H")
+
+    header_path = output_path / "cnn_weights.h"
+    header_path.write_text("\n".join(header_lines), encoding='utf-8')
+
+    weights_npz_path = output_path / "cnn_weights.npz"
+    if weight_tensors:
+        np.savez_compressed(weights_npz_path, **weight_tensors)
+    else:
+        np.savez_compressed(weights_npz_path, placeholder=np.array([], dtype=np.float32))
+
+    print(f"✅ CNN权重已导出: {weights_npz_path}")
+    return str(weights_npz_path), str(header_path)
+
+
+def create_fpga_deployment_package(model,
+                                   class_names,
+                                   label_mapping,
+                                   quant_model_path,
+                                   quantization_details,
+                                   history,
+                                   textual_report,
+                                   conf_matrix,
+                                   class_distribution,
+                                   timestamp):
+    """创建适配Pynq-Z2的部署资源包"""
+
+    print("\n🔧 创建FPGA/Pynq部署资源包...")
+
+    output_dir = Path(f"outputs/fpga_deployment_{timestamp}")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    quant_path = Path(quant_model_path)
+    quant_dest = output_dir / quant_path.name
+    shutil.copy2(quant_path, quant_dest)
+
+    weights_npz_path, weights_header_path = export_cnn_weights_for_hls(model, output_dir / "weights")
+
+    history_data = {}
+    if history is not None and hasattr(history, 'history'):
+        history_data = {k: [float(x) for x in v] for k, v in history.history.items()}
+
+    metadata = {
+        'model_type': 'Wavelet-CNN (CWT + 2D CNN)',
+        'timestamp': timestamp,
+        'input_shape': list(model.input_shape[1:]),
+        'num_parameters': int(model.count_params()),
+        'class_names': class_names,
+        'label_mapping': label_mapping,
+        'class_distribution': class_distribution,
+        'quantization': quantization_details,
+        'training_history': history_data,
+        'confusion_matrix': conf_matrix.tolist(),
+        'weights_npz': os.path.relpath(weights_npz_path, output_dir),
+        'weights_header': os.path.relpath(weights_header_path, output_dir),
+        'tflite_model': quant_dest.name
+    }
+
+    with open(output_dir / "deployment_metadata.json", 'w', encoding='utf-8') as f:
+        json.dump(metadata, f, indent=2, ensure_ascii=False)
+
+    with open(output_dir / "classification_report.txt", 'w', encoding='utf-8') as f:
+        f.write(textual_report + "\n")
+
+    np.save(output_dir / "confusion_matrix.npy", conf_matrix)
+
+    readme_text = textwrap.dedent(f"""
+        # Pynq-Z2 心律失常CNN部署指南
+
+        本目录包含基于连续小波变换 (CWT) + 卷积神经网络 (CNN) 的心律失常分类模型，已经完成INT8量化，支持直接在 Pynq-Z2 的 ARM 端通过 TensorFlow Lite 运行，或进一步移植到 DPU/HLS 加速器中。
+
+        ## 目录结构
+        - `{quant_dest.name}`: 量化后的 TensorFlow Lite 模型。
+        - `weights/cnn_weights.npz`: 原始浮点卷积/全连接权重，便于定制化量化或FINN/TVM等工具链使用。
+        - `weights/cnn_weights.h`: HLS 友好的权重头文件，可直接在Vitis HLS项目中包含。
+        - `deployment_metadata.json`: 模型结构、量化、类别映射等关键信息。
+        - `classification_report.txt`: 测试集分类指标。
+        - `confusion_matrix.npy`: 测试集混淆矩阵 (numpy格式)。
+        - `pynq_z2_tflite_inference.py`: Pynq-Z2 上的推理示例脚本。
+
+        ## 在Pynq-Z2上运行TensorFlow Lite
+        1. 将整个 `fpga_deployment_{timestamp}` 目录复制到板卡（例如 `/home/xilinx/ecg_cnn`）。
+        2. 在Pynq终端执行 `sudo pip3 install --upgrade tflite-runtime pywavelets numpy` 安装依赖。
+        3. 进入目录并运行 `python3 pynq_z2_tflite_inference.py --input sample_beat.npy`，脚本会自动生成小波尺度图并调用量化模型输出预测结果。
+
+        ## 在FPGA/DPU上进一步加速
+        - 使用 `weights/cnn_weights.npz` 与 `deployment_metadata.json` 中的输入形状、通道顺序信息，可在Vitis AI或FINN工具链中重建并量化网络。
+        - `weights/cnn_weights.h` 可直接包含到Vitis HLS项目中，结合 `deployment_metadata.json` 的量化比例实现手写加速器。
+
+        ## 输入预处理
+        - 输入为单导联 ECG 心拍（300样本，360Hz采样）。
+        - 预处理与训练保持一致：带通滤波 → 小波CWT (`morl`, 1~64尺度) → 幅值归一化至[0,1] → 作为CNN输入 (H×W×1)。
+
+        ## 支持的心律类型
+        {', '.join(class_names)}
+
+        如需集成到自定义工程，可参考 `pynq_z2_tflite_inference.py` 了解完整的数据流。
+    """)
+
+    with open(output_dir / "README.md", 'w', encoding='utf-8') as f:
+        f.write(readme_text)
+
+    pynq_script = textwrap.dedent("""
+        # Pynq-Z2 TensorFlow Lite 推理示例
+
+        import argparse
+        import json
+        from pathlib import Path
+
+        import numpy as np
+        import pywt
+        from tflite_runtime.interpreter import Interpreter
+
+
+        def create_wavelet_scalogram(beat, wavelet='morl', scales=None):
+            if scales is None:
+                scales = np.arange(1, 65)
+            beat = np.asarray(beat, dtype=np.float32)
+            beat = (beat - np.mean(beat)) / (np.std(beat) + 1e-8)
+            coefficients, _ = pywt.cwt(beat, scales, wavelet)
+            scalogram = np.abs(coefficients).astype(np.float32)
+            min_val = scalogram.min()
+            max_val = scalogram.max()
+            scalogram = (scalogram - min_val) / (max_val - min_val + 1e-8)
+            return scalogram
+
+
+        def load_metadata(base_dir):
+            with open(base_dir / "deployment_metadata.json", 'r', encoding='utf-8') as f:
+                return json.load(f)
+
+
+        def run_inference(base_dir, beat_path):
+            metadata = load_metadata(base_dir)
+            interpreter = Interpreter(model_path=str(base_dir / metadata['tflite_model']))
+            interpreter.allocate_tensors()
+
+            input_details = interpreter.get_input_details()[0]
+            output_details = interpreter.get_output_details()[0]
+
+            if beat_path is None:
+                raise ValueError('请提供包含单个心拍波形 (300样本) 的 .npy 文件')
+
+            beat = np.load(beat_path)
+            scalogram = create_wavelet_scalogram(beat)
+            scalogram = scalogram[..., np.newaxis]
+
+            scale, zero_point = input_details['quantization']
+            if scale == 0:
+                raise RuntimeError('量化比例为0，请检查量化模型。')
+            quantized = np.round(scalogram / scale + zero_point)
+            quantized = np.clip(quantized, -128, 127).astype(np.int8)
+            quantized = quantized[np.newaxis, ...]
+
+            interpreter.set_tensor(input_details['index'], quantized)
+            interpreter.invoke()
+            prediction = interpreter.get_tensor(output_details['index'])[0]
+
+            predicted_idx = int(np.argmax(prediction))
+            class_names = metadata['class_names']
+            print("预测类别:", class_names[predicted_idx])
+            print("各类别概率:")
+            for name, prob in zip(class_names, prediction):
+                print(f"  {name}: {prob:.4f}")
+
+
+        def main():
+            parser = argparse.ArgumentParser(description='Pynq-Z2 ECG CNN inference demo')
+            parser.add_argument('--input', required=True, help='包含单个心拍 (300样本) 的 .npy 文件路径')
+            args = parser.parse_args()
+
+            base_dir = Path(__file__).resolve().parent
+            run_inference(base_dir, Path(args.input))
+
+
+        if __name__ == '__main__':
+            main()
+    """)
+
+    with open(output_dir / "pynq_z2_tflite_inference.py", 'w', encoding='utf-8') as f:
+        f.write(pynq_script)
+
     print(f"✅ FPGA部署包已创建: {output_dir}")
-    return output_dir
+    return str(output_dir)
 
 def main():
     """主程序 - 使用真实数据训练"""
@@ -758,7 +729,11 @@ def main():
         current_dir = os.path.dirname(os.path.abspath(__file__))
         data_path = os.path.join(current_dir, 'data')
         loader = MITBIHDataLoader(data_path)
-        beats, labels, label_mapping = loader.load_all_data(max_records=10)  # 先用10个记录测试
+        beats, labels, label_mapping, class_names = loader.load_all_data(max_records=10)  # 先用10个记录测试
+
+        # 统计类别分布
+        unique_indices, counts = np.unique(labels, return_counts=True)
+        class_distribution = {class_names[idx]: int(count) for idx, count in zip(unique_indices, counts)}
         
         # 第2步：生成小波张量
         wavelet_tensors = create_wavelet_tensors(beats)
@@ -771,41 +746,65 @@ def main():
         print(f"   ✅ 训练集: {X_train.shape[0]}, 测试集: {X_test.shape[0]}")
 
         # 第4步：训练CNN模型
-        model, test_accuracy, history = train_cnn_model(X_train, X_test, y_train, y_test)
+        model, test_accuracy, history, textual_report, report_dict, conf_matrix = train_cnn_model(
+            X_train, X_test, y_train, y_test, class_names=class_names
+        )
 
-        # 第5步：暂不进行量化与FPGA代码生成
-        print("\n⚠️ 当前CNN模型尚未适配FPGA量化与代码生成流程，暂时跳过相关步骤。")
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 
-        model_info = {
-            'model_type': 'CNN (Wavelet Scalogram)',
-            'training_accuracy': float(test_accuracy),
-            'input_shape': list(wavelet_tensors.shape[1:]),
-            'classes': ['N', 'L', 'R', 'A', 'V', 'F', 'P']
-        }
+        # 第5步：量化模型并生成FPGA部署包
+        quantized_dir = Path('outputs/quantized_models')
+        quantized_dir.mkdir(parents=True, exist_ok=True)
+        quant_model_path, quant_details = quantize_model_for_fpga(
+            model, X_train, str(quantized_dir), timestamp
+        )
+
+        fpga_output_dir = create_fpga_deployment_package(
+            model=model,
+            class_names=class_names,
+            label_mapping=label_mapping,
+            quant_model_path=quant_model_path,
+            quantization_details=quant_details,
+            history=history,
+            textual_report=textual_report,
+            conf_matrix=conf_matrix,
+            class_distribution=class_distribution,
+            timestamp=timestamp
+        )
 
         # 第6步：保存结果
+        history_data = {}
+        if history is not None and hasattr(history, 'history'):
+            history_data = {k: [float(x) for x in v] for k, v in history.history.items()}
+
         results = {
+            'timestamp': timestamp,
             'training_time': time.time() - start_time,
             'total_beats': int(len(beats)),
             'feature_tensor_shape': list(wavelet_tensors.shape[1:]),
-            'training_accuracy': float(test_accuracy),
-            'model_architecture': model_info.get('model_architecture', []),
-            'data_source': 'MIT-BIH Real Data',
-            'technology_stack': 'Wavelet Scalogram + CNN',
-            'class_distribution': {str(k): int(v) for k, v in zip(*np.unique(labels, return_counts=True))}
+            'test_accuracy': float(test_accuracy),
+            'num_parameters': int(model.count_params()),
+            'data_source': 'MIT-BIH Arrhythmia Database',
+            'technology_stack': 'Continuous Wavelet Transform + 2D CNN',
+            'class_names': class_names,
+            'class_distribution': class_distribution,
+            'label_mapping': label_mapping,
+            'quantization': quant_details,
+            'classification_report': report_dict,
+            'confusion_matrix': conf_matrix.tolist(),
+            'training_history': history_data,
+            'fpga_package': fpga_output_dir,
+            'tflite_model': quant_model_path
         }
 
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         os.makedirs('outputs/experiments', exist_ok=True)
         with open(f'outputs/experiments/real_training_{timestamp}.json', 'w', encoding='utf-8') as f:
             json.dump(results, f, indent=2, ensure_ascii=False)
 
         # 保存模型
         os.makedirs('outputs', exist_ok=True)
-        model.save(f'outputs/trained_ecg_model_{timestamp}.h5')
+        model.save(f'outputs/trained_ecg_cnn_{timestamp}.h5')
 
-        fpga_output_dir = None
-        
         print("\n" + "=" * 70)
         print("✅ 基于真实MIT-BIH数据的训练完成！")
         print(f"📊 数据源: MIT-BIH心律失常数据库")
@@ -813,12 +812,10 @@ def main():
         print(f"🔧 小波张量尺寸: {wavelet_tensors.shape[1:]}")
         print(f"🧠 训练准确率: {test_accuracy:.4f}")
         print(f"⏱️  总训练时间: {results['training_time']:.1f} 秒")
-        if fpga_output_dir:
-            print(f"📁 FPGA部署包: {fpga_output_dir}")
-        else:
-            print("📁 FPGA部署包: 暂未生成（CNN模型尚未适配）")
-        print(f"💾 模型文件: outputs/trained_ecg_model_{timestamp}.h5")
-        print("🎯 真实数据训练完成，后续可继续针对FPGA部署进行优化。")
+        print(f"📁 FPGA部署包: {fpga_output_dir}")
+        print(f"💾 模型文件: outputs/trained_ecg_cnn_{timestamp}.h5")
+        print(f"🧮 支持心律类型: {', '.join(class_names)}")
+        print("🎯 模型已适配Pynq-Z2量化部署流程，可直接复制部署目录进行验证。")
         
     except Exception as e:
         print(f"\n❌ 训练失败: {str(e)}")
