@@ -300,6 +300,93 @@ def filter_rare_classes(beats, labels, label_mapping, class_names, min_count=2):
 
     return filtered_beats, remapped_labels, new_label_mapping, new_class_names, rare_summary
 
+
+def compute_class_distribution(labels, class_names):
+    """统计标签分布，返回类别名到数量的映射"""
+
+    unique_labels, counts = np.unique(labels, return_counts=True)
+    distribution = {}
+    for label, count in zip(unique_labels, counts):
+        if 0 <= label < len(class_names):
+            distribution[class_names[label]] = int(count)
+        else:
+            distribution[str(label)] = int(count)
+    return distribution
+
+
+def stratified_train_val_test_split(X, y, test_size=0.2, val_size=0.1, random_state=42):
+    """分层拆分训练/验证/测试集"""
+
+    if not 0 < test_size < 1:
+        raise ValueError("test_size 必须在 (0, 1) 范围内")
+    if not 0 < val_size < 1:
+        raise ValueError("val_size 必须在 (0, 1) 范围内")
+
+    X_temp, X_test, y_temp, y_test = train_test_split(
+        X,
+        y,
+        test_size=test_size,
+        random_state=random_state,
+        stratify=y,
+    )
+
+    remaining = 1.0 - test_size
+    adjusted_val = val_size / remaining
+
+    X_train, X_val, y_train, y_val = train_test_split(
+        X_temp,
+        y_temp,
+        test_size=adjusted_val,
+        random_state=random_state,
+        stratify=y_temp,
+    )
+
+    return X_train, X_val, X_test, y_train, y_val, y_test
+
+
+def rebalance_training_data(X, y, min_samples_per_class=32, noise_std=0.01, random_state=42):
+    """对训练数据进行过采样，避免极端类不平衡"""
+
+    unique_labels, counts = np.unique(y, return_counts=True)
+    augmentations = {}
+    augmented_sets = [X]
+    augmented_labels = [y]
+
+    rng = np.random.default_rng(random_state)
+
+    for label, count in zip(unique_labels, counts):
+        if count >= min_samples_per_class:
+            continue
+
+        label_indices = np.where(y == label)[0]
+        if label_indices.size == 0:
+            continue
+
+        needed = int(min_samples_per_class - count)
+        sampled_indices = rng.choice(label_indices, size=needed, replace=True)
+        samples = X[sampled_indices]
+
+        if noise_std > 0:
+            noise = rng.normal(loc=0.0, scale=noise_std, size=samples.shape).astype(np.float32)
+            samples = np.clip(samples + noise, 0.0, 1.0)
+
+        augmented_sets.append(samples)
+        augmented_labels.append(np.full(needed, label, dtype=y.dtype))
+        augmentations[int(label)] = {
+            'original': int(count),
+            'added': int(needed),
+            'final': int(count + needed),
+        }
+
+    if len(augmented_sets) == 1:
+        return X, y, augmentations
+
+    X_augmented = np.concatenate(augmented_sets, axis=0)
+    y_augmented = np.concatenate(augmented_labels, axis=0)
+
+    permutation = rng.permutation(len(y_augmented))
+    return X_augmented[permutation], y_augmented[permutation], augmentations
+
 def extract_all_features(beats):
     """提取所有特征"""
     print("🔧 提取特征...")
@@ -433,60 +520,127 @@ def train_model(X_train, X_test, y_train, y_test, class_names=None):
     return model, scaler, test_accuracy, history, textual_report, report_dict, conf_matrix
 
 
-def train_cnn_model(X_train, X_test, y_train, y_test, class_names, epochs=40, batch_size=32):
-    """使用CNN训练基于小波张量的模型"""
+def train_cnn_model(X_train,
+                    y_train,
+                    X_val,
+                    y_val,
+                    X_test,
+                    y_test,
+                    class_names,
+                    epochs=40,
+                    batch_size=32,
+                    min_samples_per_class=32):
+    """使用CNN训练基于小波张量的模型，并提供更丰富的调试信息"""
+
     print("🧠 训练CNN模型...")
+
+    train_distribution = compute_class_distribution(y_train, class_names)
+    val_distribution = compute_class_distribution(y_val, class_names)
+    test_distribution = compute_class_distribution(y_test, class_names)
+
+    print("   📈 训练集类别分布:")
+    for name, count in train_distribution.items():
+        print(f"      - {name}: {count}")
+
+    print("   📊 验证集类别分布:")
+    for name, count in val_distribution.items():
+        print(f"      - {name}: {count}")
+
+    print("   📦 测试集类别分布:")
+    for name, count in test_distribution.items():
+        print(f"      - {name}: {count}")
+
+    # 处理类别不平衡
+    balanced_X_train, balanced_y_train, augmentations = rebalance_training_data(
+        X_train,
+        y_train,
+        min_samples_per_class=min_samples_per_class,
+    )
+
+    if augmentations:
+        print("   ♻️  对以下类别执行了过采样:")
+        for label_idx, stats in augmentations.items():
+            class_name = class_names[label_idx] if 0 <= label_idx < len(class_names) else str(label_idx)
+            print(
+                f"      - {class_name}: 原始 {stats['original']} 个 → 增补 {stats['added']} 个 → 最终 {stats['final']} 个"
+            )
 
     num_classes = len(class_names)
     model = build_cnn_model(X_train.shape[1:], num_classes)
 
-    # 处理类别不平衡，计算类别权重
     unique_classes = np.unique(y_train)
-    class_weights = class_weight.compute_class_weight(class_weight='balanced',
-                                                      classes=unique_classes,
-                                                      y=y_train)
-    class_weight_dict = {cls: weight for cls, weight in zip(unique_classes, class_weights)}
+    unique_classes = np.sort(unique_classes)
+    class_weights = class_weight.compute_class_weight(
+        class_weight='balanced',
+        classes=unique_classes,
+        y=y_train,
+    )
+    class_weight_dict = {int(cls): float(weight) for cls, weight in zip(unique_classes, class_weights)}
 
     callbacks = [
         EarlyStopping(monitor='val_loss', patience=6, restore_best_weights=True),
-        ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, min_lr=1e-5)
+        ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, min_lr=1e-5),
     ]
 
     history = model.fit(
-        X_train, y_train,
+        balanced_X_train,
+        balanced_y_train,
         epochs=epochs,
         batch_size=batch_size,
-        validation_split=0.2,
+        validation_data=(X_val, y_val),
         class_weight=class_weight_dict,
         callbacks=callbacks,
-        verbose=1
+        shuffle=True,
+        verbose=1,
     )
 
+    val_loss, val_accuracy = model.evaluate(X_val, y_val, verbose=0)
     test_loss, test_accuracy = model.evaluate(X_test, y_test, verbose=0)
     y_pred = model.predict(X_test, verbose=0)
     y_pred_classes = np.argmax(y_pred, axis=1)
 
     print(f"\n✅ CNN训练完成!")
-    print(f"   测试准确率: {test_accuracy:.4f}")
+    print(f"   验证准确率: {val_accuracy:.4f} (loss={val_loss:.4f})")
+    print(f"   测试准确率: {test_accuracy:.4f} (loss={test_loss:.4f})")
 
     # 分类报告与混淆矩阵
     unique_eval_classes = np.unique(y_test)
     target_names = [class_names[idx] for idx in unique_eval_classes]
-    textual_report = classification_report(y_test, y_pred_classes,
-                                           labels=unique_eval_classes,
-                                           target_names=target_names,
-                                           digits=4)
-    report_dict = classification_report(y_test, y_pred_classes,
-                                        labels=unique_eval_classes,
-                                        target_names=target_names,
-                                        digits=4,
-                                        output_dict=True)
+    textual_report = classification_report(
+        y_test,
+        y_pred_classes,
+        labels=unique_eval_classes,
+        target_names=target_names,
+        digits=4,
+    )
+    report_dict = classification_report(
+        y_test,
+        y_pred_classes,
+        labels=unique_eval_classes,
+        target_names=target_names,
+        digits=4,
+        output_dict=True,
+    )
     conf_matrix = confusion_matrix(y_test, y_pred_classes)
 
     print("\n📊 分类报告:")
     print(textual_report)
 
-    return model, test_accuracy, history, textual_report, report_dict, conf_matrix
+    evaluation_summary = {
+        'val_loss': float(val_loss),
+        'val_accuracy': float(val_accuracy),
+        'test_loss': float(test_loss),
+        'test_accuracy': float(test_accuracy),
+        'train_distribution': train_distribution,
+        'validation_distribution': val_distribution,
+        'test_distribution': test_distribution,
+        'class_weight': class_weight_dict,
+        'augmentations': augmentations,
+        'effective_train_size': int(len(balanced_y_train)),
+        'original_train_size': int(len(y_train)),
+    }
+
+    return model, evaluation_summary, history, textual_report, report_dict, conf_matrix
 
 def quantize_model_for_fpga(model, representative_data, output_dir, timestamp, calibration_size=256):
     """使用TensorFlow Lite进行整型量化，便于在Pynq-Z2上部署"""
@@ -793,7 +947,9 @@ def create_fpga_deployment_package(model,
                                    class_distribution,
                                    timestamp,
                                    per_class_metrics=None,
-                                   excluded_classes=None):
+                                   excluded_classes=None,
+                                   split_distributions=None,
+                                   validation_metrics=None):
     """创建适配Pynq-Z2的部署资源包"""
 
     print("\n🔧 创建FPGA/Pynq部署资源包...")
@@ -833,6 +989,12 @@ def create_fpga_deployment_package(model,
         'per_class_metrics': per_class_metrics or {},
         'excluded_classes': excluded_classes or {}
     }
+
+    if validation_metrics is not None:
+        metadata['validation_metrics'] = validation_metrics
+
+    if split_distributions is not None:
+        metadata['dataset_split_distribution'] = split_distributions
 
     with open(output_dir / "deployment_metadata.json", 'w', encoding='utf-8') as f:
         json.dump(metadata, f, indent=2, ensure_ascii=False)
@@ -1074,23 +1236,58 @@ def main():
             wavelet_tensors = create_wavelet_tensors(beats)
             print(f"   ✅ 小波张量形状: {wavelet_tensors.shape}")
 
-            X_train, X_test, y_train, y_test = train_test_split(
-                wavelet_tensors, labels, test_size=0.2, random_state=42, stratify=labels
+            (
+                X_train,
+                X_val,
+                X_test,
+                y_train,
+                y_val,
+                y_test,
+            ) = stratified_train_val_test_split(
+                wavelet_tensors,
+                labels,
+                test_size=0.2,
+                val_size=0.1,
+                random_state=42,
             )
-            print(f"   ✅ 训练集: {X_train.shape[0]}, 测试集: {X_test.shape[0]}")
 
-            model, test_accuracy, history, textual_report, report_dict, conf_matrix = train_cnn_model(
-                X_train, X_test, y_train, y_test, class_names=class_names
+            print(
+                f"   ✅ 数据集划分: 训练 {X_train.shape[0]} / 验证 {X_val.shape[0]} / 测试 {X_test.shape[0]}"
+            )
+
+            (
+                model,
+                evaluation_summary,
+                history,
+                textual_report,
+                report_dict,
+                conf_matrix,
+            ) = train_cnn_model(
+                X_train,
+                y_train,
+                X_val,
+                y_val,
+                X_test,
+                y_test,
+                class_names=class_names,
             )
 
             per_class_metrics = _collect_per_class_metrics(report_dict)
+
+            augmentations_named = {}
+            for idx, stats in evaluation_summary.get('augmentations', {}).items():
+                key = class_names[idx] if 0 <= idx < len(class_names) else str(idx)
+                augmentations_named[key] = stats
 
             timestamp = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_cnn"
 
             quantized_dir = Path('outputs/quantized_models')
             quantized_dir.mkdir(parents=True, exist_ok=True)
             quant_model_path, quant_details = quantize_model_for_fpga(
-                model, X_train, str(quantized_dir), timestamp
+                model,
+                np.concatenate([X_train, X_val], axis=0),
+                str(quantized_dir),
+                timestamp,
             )
 
             fpga_output_dir, weight_statistics = create_fpga_deployment_package(
@@ -1106,6 +1303,15 @@ def main():
                 timestamp=timestamp,
                 per_class_metrics=per_class_metrics,
                 excluded_classes=dropped_classes,
+                split_distributions={
+                    'train': evaluation_summary.get('train_distribution', {}),
+                    'validation': evaluation_summary.get('validation_distribution', {}),
+                    'test': evaluation_summary.get('test_distribution', {}),
+                },
+                validation_metrics={
+                    'val_accuracy': evaluation_summary.get('val_accuracy'),
+                    'val_loss': evaluation_summary.get('val_loss'),
+                },
             )
 
             history_data = {}
@@ -1117,7 +1323,17 @@ def main():
                 'training_time': time.time() - cnn_start,
                 'total_beats': int(len(beats)),
                 'feature_tensor_shape': list(wavelet_tensors.shape[1:]),
-                'test_accuracy': float(test_accuracy),
+                'test_accuracy': float(evaluation_summary.get('test_accuracy', 0.0)),
+                'test_loss': float(evaluation_summary.get('test_loss', 0.0)),
+                'validation_accuracy': float(evaluation_summary.get('val_accuracy', 0.0)),
+                'validation_loss': float(evaluation_summary.get('val_loss', 0.0)),
+                'train_distribution': evaluation_summary.get('train_distribution', {}),
+                'validation_distribution': evaluation_summary.get('validation_distribution', {}),
+                'test_distribution': evaluation_summary.get('test_distribution', {}),
+                'augmentations': augmentations_named,
+                'class_weight': evaluation_summary.get('class_weight', {}),
+                'effective_train_size': evaluation_summary.get('effective_train_size'),
+                'original_train_size': evaluation_summary.get('original_train_size'),
                 'num_parameters': int(model.count_params()),
                 'data_source': 'MIT-BIH Arrhythmia Database',
                 'technology_stack': 'Continuous Wavelet Transform + 2D CNN',
@@ -1148,7 +1364,9 @@ def main():
             print(f"📊 数据源: MIT-BIH心律失常数据库")
             print(f"💓 训练心拍数: {len(beats):,}")
             print(f"🔧 小波张量尺寸: {wavelet_tensors.shape[1:]}")
-            print(f"🧠 测试准确率: {test_accuracy:.4f}")
+            print(
+                f"🧠 验证准确率: {evaluation_summary.get('val_accuracy', 0.0):.4f} / 测试准确率: {evaluation_summary.get('test_accuracy', 0.0):.4f}"
+            )
             print(f"⏱️  训练耗时: {results['training_time']:.1f} 秒")
             print(f"📁 FPGA部署包: {fpga_output_dir}")
             print(f"💾 模型文件: {model_path}")
