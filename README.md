@@ -199,12 +199,20 @@ acc_t fixed_mult(data_t a, data_t b) {
 
 ### 环境配置
 ```bash
-# Python环境 (推荐Python 3.8+)
-pip install tensorflow pandas numpy scikit-learn pywt wfdb scipy matplotlib
+# Python 环境 (建议 Python 3.10，已在 Conda `td-gpu` 环境下验证)
+conda create -n td-gpu python=3.10
+conda activate td-gpu
+pip install --upgrade pip
+pip install -r requirements.txt
 
-# FPGA开发环境（当前工程基于 2019.2）
+# GPU 训练（可选）
+# 若需要使用独立 GPU 版 TensorFlow，可改为: pip install tensorflow-gpu==2.10.1
+
+# FPGA 开发环境（当前工程基于 2019.2）
 # Vivado 2019.2 + Vivado HLS 2019.2（xsim）
 ```
+
+> 💡 **ARM/Pynq 端推理**：在板载 Linux 上仅需安装 `tflite-runtime`、`pywavelets` 和 `numpy`，详见部署包内的 `README.md`。
 
 ### 当前可运行的功能
 
