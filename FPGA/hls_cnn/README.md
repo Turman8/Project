@@ -23,3 +23,9 @@
 - 当前实现为参考版本，重点在于说明数据流、BN 折叠和 Softmax 处理流程。
 - 若需要更高性能，可在卷积/池化循环中调节 `#pragma HLS PIPELINE` 或增加适度的 `UNROLL`/`ARRAY_PARTITION`；当前模板默认以单 MAC 复用实现，兼顾资源压力与时延。
 - 默认定点格式为 `ap_fixed<16,6>`，与导出的权重头文件保持一致，可在 `cnn_inference.hpp` 中统一修改。
+
+## 与 Vitis Libraries 的协同
+
+- 模板中的卷积、池化、向量化 Softmax 已经封装为独立函数，若希望直接复用 [Vitis Libraries](https://xilinx.github.io/Vitis_Libraries/) 中的 `hpc`/`dsp`/`vision` 算子，可在相同接口处替换为 `xf::blas::gemm`, `xf::dsp::aie::conv` 等实现。
+- 权重与激活张量的排布遵循 NCHW→分块流式的方式，已在 `cnn_inference.hpp` 中定义常量尺寸，因此替换算子时只需保持输入/输出缓冲的行主序布局；若算子需要 tile 化，可依据 `INPUT_HEIGHT`, `INPUT_WIDTH`, `INPUT_CHANNELS` 拆分。
+- 重新综合前请在 `run_hls.tcl` 中添加对应的 Vitis Libraries include 与 `CONFIG.addIncludePath` 设置，同时确认 `ap_fixed` 精度与库函数的模板参数一致，以避免类型推断失败。

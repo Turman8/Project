@@ -318,8 +318,11 @@ def create_wavelet_tensors(
         raise ValueError("传入的心拍数量为0，无法生成小波张量")
 
     frequency_masks = None
+    band_mask_tensor = None
     if channel_strategy == 'cardiac_band':
         frequency_masks = _build_frequency_masks(scales, wavelet, fs, CARDIAC_WAVELET_BANDS)
+        mask_array = np.stack(frequency_masks, axis=-1)  # [num_scales, num_channels]
+        band_mask_tensor = mask_array[:, np.newaxis, :].astype(np.float32)
 
     num_channels = len(frequency_masks) if frequency_masks is not None else 1
     dtype = np.dtype(dtype)
@@ -391,6 +394,8 @@ def create_wavelet_tensors(
             sample = np.asarray(tensors[idx], dtype=np.float32)
             normalized = (sample - channel_mean.reshape((1, 1, num_channels))) / channel_std.reshape((1, 1, num_channels))
             normalized = np.clip(normalized, clip_min, clip_max)
+            if band_mask_tensor is not None:
+                normalized *= band_mask_tensor
             tensors[idx] = normalized.astype(dtype, copy=False)
 
         tensors.flush()
@@ -414,6 +419,8 @@ def create_wavelet_tensors(
     tensors = tensors.astype(np.float32)
     tensors = (tensors - channel_mean.reshape((1, 1, 1, num_channels))) / channel_std.reshape((1, 1, 1, num_channels))
     tensors = np.clip(tensors, clip_min, clip_max)
+    if band_mask_tensor is not None:
+        tensors *= band_mask_tensor
 
     info = {
         'shape': list(target_shape),
@@ -752,6 +759,9 @@ class WaveletTensorSequence(Sequence):
     def get_labels(self):
         return self.base_labels.copy()
 
+    def get_training_labels(self):
+        return self.labels.copy()
+
     def get_numpy_subset(self, subset_indices):
         subset_indices = np.asarray(subset_indices, dtype=np.int64)
         return np.asarray(self._memmap[subset_indices], dtype=np.float32)
@@ -996,16 +1006,21 @@ def train_cnn_model(
     model = build_cnn_model(train_sequence.sample_shape, num_classes)
 
     base_labels = train_sequence.get_labels()
-    unique_classes = np.unique(base_labels)
+    effective_labels = train_sequence.get_training_labels()
+    unique_classes = np.unique(effective_labels)
     unique_classes = np.sort(unique_classes)
     class_weight_dict = {}
     if class_weight_strategy:
         weights = class_weight.compute_class_weight(
             class_weight=class_weight_strategy,
             classes=unique_classes,
-            y=base_labels,
+            y=effective_labels,
         )
         class_weight_dict = {int(cls): float(weight) for cls, weight in zip(unique_classes, weights)}
+        print("   ⚖️ 类别权重 (考虑过采样后):")
+        for cls in unique_classes:
+            name = class_names[int(cls)] if 0 <= int(cls) < len(class_names) else str(cls)
+            print(f"      - {name}: {class_weight_dict[int(cls)]:.4f}")
 
     callbacks = [
         EarlyStopping(monitor='val_loss', patience=6, restore_best_weights=True),
