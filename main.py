@@ -30,6 +30,36 @@ import matplotlib.pyplot as plt
 import warnings
 warnings.filterwarnings('ignore')
 
+
+CARDIAC_WAVELET_BANDS = [
+    {
+        'name': 'atrial_low',
+        'range_hz': (0.5, 5.0),
+        'description': '低频段(0.5-5Hz)，覆盖P波/T波等缓慢成分',
+    },
+    {
+        'name': 'qrs_mid',
+        'range_hz': (5.0, 15.0),
+        'description': '中频段(5-15Hz)，聚焦于QRS复合波主频',
+    },
+    {
+        'name': 'high_freq',
+        'range_hz': (15.0, 40.0),
+        'description': '高频段(15-40Hz)，捕获室性波群/快速病理特征',
+    },
+]
+
+def _serialize_wavelet_bands(bands):
+    return [
+        {
+            'name': band['name'],
+            'range_hz': [float(band['range_hz'][0]), float(band['range_hz'][1])],
+            'description': band.get('description', ''),
+        }
+        for band in bands
+    ]
+
+
 print("🚀 ECG心电图分析系统 - 基于真实MIT-BIH数据训练")
 print("=" * 70)
 
@@ -216,7 +246,35 @@ def extract_time_features(beat):
     return features
 
 
-def create_wavelet_tensors(beats, wavelet='morl', scales=None, output_format='2d'):
+def _build_frequency_masks(scales, wavelet, fs, bands):
+    """根据频段定义生成尺度掩码"""
+
+    freqs = pywt.scale2frequency(wavelet, scales)
+    freqs = freqs * fs
+
+    masks = []
+    for band in bands:
+        low, high = band['range_hz']
+        mask = (freqs >= low) & (freqs < high)
+
+        # 若严格范围内无尺度，放宽 10% 以确保至少包含一个尺度
+        if not np.any(mask):
+            tolerance = max(0.5, 0.1 * (high - low))
+            mask = (freqs >= max(0.0, low - tolerance)) & (freqs < high + tolerance)
+
+        masks.append(mask.astype(np.float32))
+
+    return np.stack(masks, axis=0)
+
+
+def create_wavelet_tensors(
+    beats,
+    wavelet='morl',
+    scales=None,
+    output_format='2d',
+    fs=360,
+    channel_strategy='cardiac_band'
+):
     """根据心拍生成小波张量
 
     Args:
@@ -224,6 +282,8 @@ def create_wavelet_tensors(beats, wavelet='morl', scales=None, output_format='2d
         wavelet (str): 小波基类型
         scales (list or np.ndarray, optional): 小波尺度
         output_format (str): "2d" 返回 [N, H, W, C] 张量, "sequence" 返回 [N, T, C]
+        fs (int): 采样频率
+        channel_strategy (str): 生成通道的策略，默认为根据P/QRS/T频段生成多通道
 
     Returns:
         np.ndarray: 小波张量
@@ -231,6 +291,13 @@ def create_wavelet_tensors(beats, wavelet='morl', scales=None, output_format='2d
 
     if scales is None:
         scales = np.arange(1, 65)
+
+    if channel_strategy not in {'cardiac_band', 'single'}:
+        raise ValueError("channel_strategy must be 'cardiac_band' or 'single'")
+
+    frequency_masks = None
+    if channel_strategy == 'cardiac_band':
+        frequency_masks = _build_frequency_masks(scales, wavelet, fs, CARDIAC_WAVELET_BANDS)
 
     tensors = []
     for idx, beat in enumerate(beats):
@@ -248,18 +315,32 @@ def create_wavelet_tensors(beats, wavelet='morl', scales=None, output_format='2d
         max_val = np.max(scalogram)
         scalogram = (scalogram - min_val) / (max_val - min_val + 1e-8)
 
-        tensors.append(scalogram)
+        if channel_strategy == 'cardiac_band':
+            channels = []
+            for mask in frequency_masks:
+                band_view = scalogram * mask[:, np.newaxis]
+                # 对每个频段再次归一化，避免能量差异过大
+                max_band = np.max(band_view)
+                min_band = np.min(band_view)
+                if max_band > min_band:
+                    band_view = (band_view - min_band) / (max_band - min_band)
+                channels.append(band_view)
+            stacked = np.stack(channels, axis=-1)
+        else:
+            stacked = scalogram[..., np.newaxis]
+
+        tensors.append(stacked)
 
     tensors = np.stack(tensors)
 
     if output_format == '2d':
-        tensors = tensors[..., np.newaxis]
-    elif output_format == 'sequence':
-        tensors = np.transpose(tensors, (0, 2, 1))
-    else:
-        raise ValueError("output_format must be '2d' or 'sequence'")
+        return tensors.astype(np.float32)
+    if output_format == 'sequence':
+        # [N, H, W, C] -> [N, W, H * C]
+        reshaped = tensors.reshape(tensors.shape[0], tensors.shape[2], -1)
+        return reshaped.astype(np.float32)
 
-    return tensors.astype(np.float32)
+    raise ValueError("output_format must be '2d' or 'sequence'")
 
 
 def filter_rare_classes(beats, labels, label_mapping, class_names, min_count=2):
@@ -344,7 +425,38 @@ def stratified_train_val_test_split(X, y, test_size=0.2, val_size=0.1, random_st
     return X_train, X_val, X_test, y_train, y_val, y_test
 
 
-def rebalance_training_data(X, y, min_samples_per_class=32, noise_std=0.01, random_state=42):
+def _augment_cwt_samples(samples, rng, noise_std=0.01, max_shift=4, scale_range=(0.9, 1.1)):
+    """在过采样阶段对小波张量进行轻量扰动"""
+
+    augmented = samples.astype(np.float32).copy()
+
+    if max_shift > 0:
+        shifts = rng.integers(-max_shift, max_shift + 1, size=samples.shape[0])
+        for i, shift in enumerate(shifts):
+            if shift == 0:
+                continue
+            augmented[i] = np.roll(augmented[i], shift=shift, axis=1)
+
+    if scale_range is not None:
+        low, high = scale_range
+        scales = rng.uniform(low, high, size=(samples.shape[0], 1, 1, samples.shape[-1]))
+        augmented = augmented * scales.astype(np.float32)
+
+    if noise_std > 0:
+        noise = rng.normal(loc=0.0, scale=noise_std, size=samples.shape).astype(np.float32)
+        augmented += noise
+
+    return np.clip(augmented, 0.0, 1.0)
+
+
+def rebalance_training_data(
+    X,
+    y,
+    min_samples_per_class=32,
+    noise_std=0.01,
+    random_state=42,
+    adaptive_target=True,
+):
     """对训练数据进行过采样，避免极端类不平衡"""
 
     unique_labels, counts = np.unique(y, return_counts=True)
@@ -354,21 +466,23 @@ def rebalance_training_data(X, y, min_samples_per_class=32, noise_std=0.01, rand
 
     rng = np.random.default_rng(random_state)
 
+    target_per_class = min_samples_per_class
+    if adaptive_target and counts.size:
+        percentile_75 = np.percentile(counts, 75)
+        target_per_class = max(min_samples_per_class, int(np.ceil(percentile_75)))
+
     for label, count in zip(unique_labels, counts):
-        if count >= min_samples_per_class:
+        if count >= target_per_class:
             continue
 
         label_indices = np.where(y == label)[0]
         if label_indices.size == 0:
             continue
 
-        needed = int(min_samples_per_class - count)
+        needed = int(target_per_class - count)
         sampled_indices = rng.choice(label_indices, size=needed, replace=True)
         samples = X[sampled_indices]
-
-        if noise_std > 0:
-            noise = rng.normal(loc=0.0, scale=noise_std, size=samples.shape).astype(np.float32)
-            samples = np.clip(samples + noise, 0.0, 1.0)
+        samples = _augment_cwt_samples(samples, rng, noise_std=noise_std)
 
         augmented_sets.append(samples)
         augmented_labels.append(np.full(needed, label, dtype=y.dtype))
@@ -376,6 +490,7 @@ def rebalance_training_data(X, y, min_samples_per_class=32, noise_std=0.01, rand
             'original': int(count),
             'added': int(needed),
             'final': int(count + needed),
+            'target': int(target_per_class),
         }
 
     if len(augmented_sets) == 1:
@@ -529,7 +644,8 @@ def train_cnn_model(X_train,
                     class_names,
                     epochs=40,
                     batch_size=32,
-                    min_samples_per_class=32):
+                    min_samples_per_class=32,
+                    oversample_noise_std=0.02):
     """使用CNN训练基于小波张量的模型，并提供更丰富的调试信息"""
 
     print("🧠 训练CNN模型...")
@@ -555,7 +671,10 @@ def train_cnn_model(X_train,
         X_train,
         y_train,
         min_samples_per_class=min_samples_per_class,
+        noise_std=oversample_noise_std,
     )
+
+    balanced_distribution = compute_class_distribution(balanced_y_train, class_names)
 
     if augmentations:
         print("   ♻️  对以下类别执行了过采样:")
@@ -564,6 +683,12 @@ def train_cnn_model(X_train,
             print(
                 f"      - {class_name}: 原始 {stats['original']} 个 → 增补 {stats['added']} 个 → 最终 {stats['final']} 个"
             )
+
+    if balanced_distribution:
+        print("   🔄 过采样后训练集分布:")
+        for name, count in balanced_distribution.items():
+            print(f"      - {name}: {count}")
+        print("   （已应用随机平移、缩放和噪声扰动增强小波张量）")
 
     num_classes = len(class_names)
     model = build_cnn_model(X_train.shape[1:], num_classes)
@@ -638,6 +763,13 @@ def train_cnn_model(X_train,
         'augmentations': augmentations,
         'effective_train_size': int(len(balanced_y_train)),
         'original_train_size': int(len(y_train)),
+        'balanced_train_distribution': balanced_distribution,
+        'augmentation_strategy': {
+            'noise_std': oversample_noise_std,
+            'max_time_shift': 4,
+            'scale_range': [0.9, 1.1],
+            'adaptive_target': True,
+        },
     }
 
     return model, evaluation_summary, history, textual_report, report_dict, conf_matrix
@@ -949,7 +1081,9 @@ def create_fpga_deployment_package(model,
                                    per_class_metrics=None,
                                    excluded_classes=None,
                                    split_distributions=None,
-                                   validation_metrics=None):
+                                   validation_metrics=None,
+                                   wavelet_band_info=None,
+                                   cwt_settings=None):
     """创建适配Pynq-Z2的部署资源包"""
 
     print("\n🔧 创建FPGA/Pynq部署资源包...")
@@ -996,6 +1130,12 @@ def create_fpga_deployment_package(model,
     if split_distributions is not None:
         metadata['dataset_split_distribution'] = split_distributions
 
+    if wavelet_band_info is not None:
+        metadata['wavelet_bands'] = wavelet_band_info
+
+    if cwt_settings is not None:
+        metadata['cwt_settings'] = cwt_settings
+
     with open(output_dir / "deployment_metadata.json", 'w', encoding='utf-8') as f:
         json.dump(metadata, f, indent=2, ensure_ascii=False)
 
@@ -1030,7 +1170,7 @@ def create_fpga_deployment_package(model,
 
         ## 输入预处理
         - 输入为单导联 ECG 心拍（300样本，360Hz采样）。
-        - 预处理与训练保持一致：带通滤波 → 小波CWT (`morl`, 1~64尺度) → 幅值归一化至[0,1] → 作为CNN输入 (H×W×1)。
+        - 预处理与训练保持一致：带通滤波 → 小波CWT (`morl`, 1~64尺度) → 幅值归一化至[0,1] → 构造包含低频/中频/高频三个通道的CNN输入 (H×W×3)。
 
         ## 支持的心律类型
         {', '.join(class_names)}
@@ -1233,8 +1373,20 @@ def main():
             print("\n=== Wavelet-CNN 训练流程 ===")
             cnn_start = time.time()
 
-            wavelet_tensors = create_wavelet_tensors(beats)
+            cwt_scales = np.arange(1, 65)
+            wavelet_tensors = create_wavelet_tensors(
+                beats,
+                scales=cwt_scales,
+                fs=loader.fs,
+                wavelet='morl',
+                channel_strategy='cardiac_band',
+            )
             print(f"   ✅ 小波张量形状: {wavelet_tensors.shape}")
+            print("   🎯 小波通道覆盖频段:")
+            for band in CARDIAC_WAVELET_BANDS:
+                print(
+                    f"      - {band['name']}: {band['range_hz'][0]:.1f}-{band['range_hz'][1]:.1f} Hz ({band['description']})"
+                )
 
             (
                 X_train,
@@ -1290,6 +1442,14 @@ def main():
                 timestamp,
             )
 
+            cwt_settings = {
+                'wavelet': 'morl',
+                'scales': [int(x) for x in cwt_scales.tolist()],
+                'sampling_rate': loader.fs,
+                'channel_strategy': 'cardiac_band',
+                'bands': _serialize_wavelet_bands(CARDIAC_WAVELET_BANDS),
+            }
+
             fpga_output_dir, weight_statistics = create_fpga_deployment_package(
                 model=model,
                 class_names=class_names,
@@ -1312,6 +1472,8 @@ def main():
                     'val_accuracy': evaluation_summary.get('val_accuracy'),
                     'val_loss': evaluation_summary.get('val_loss'),
                 },
+                wavelet_band_info=_serialize_wavelet_bands(CARDIAC_WAVELET_BANDS),
+                cwt_settings=cwt_settings,
             )
 
             history_data = {}
@@ -1330,16 +1492,20 @@ def main():
                 'train_distribution': evaluation_summary.get('train_distribution', {}),
                 'validation_distribution': evaluation_summary.get('validation_distribution', {}),
                 'test_distribution': evaluation_summary.get('test_distribution', {}),
+                'balanced_train_distribution': evaluation_summary.get('balanced_train_distribution', {}),
                 'augmentations': augmentations_named,
                 'class_weight': evaluation_summary.get('class_weight', {}),
                 'effective_train_size': evaluation_summary.get('effective_train_size'),
                 'original_train_size': evaluation_summary.get('original_train_size'),
+                'augmentation_strategy': evaluation_summary.get('augmentation_strategy'),
                 'num_parameters': int(model.count_params()),
                 'data_source': 'MIT-BIH Arrhythmia Database',
                 'technology_stack': 'Continuous Wavelet Transform + 2D CNN',
                 'class_names': class_names,
                 'class_distribution': class_distribution,
                 'label_mapping': label_mapping,
+                'wavelet_bands': _serialize_wavelet_bands(CARDIAC_WAVELET_BANDS),
+                'cwt_settings': cwt_settings,
                 'quantization': quant_details,
                 'classification_report': report_dict,
                 'confusion_matrix': conf_matrix.tolist(),
