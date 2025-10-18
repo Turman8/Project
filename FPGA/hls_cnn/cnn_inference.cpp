@@ -4,12 +4,15 @@
 
 namespace {
 
+constexpr data_t kNegInf = data_t(-512.0f);
+
 template <int IN_H, int IN_W, int IN_C,
           int OUT_H, int OUT_W, int OUT_C,
+          int POOL_H, int POOL_W,
           int K_H, int K_W>
-void conv_bn_relu(
+void conv_bn_relu_pool(
     const data_t input[IN_H][IN_W][IN_C],
-    data_t output[OUT_H][OUT_W][OUT_C],
+    data_t output[POOL_H][POOL_W][OUT_C],
     const float weights[OUT_C * IN_C * K_H * K_W],
     const float biases[OUT_C],
     const float bn_scale[OUT_C],
@@ -20,10 +23,28 @@ void conv_bn_relu(
     const int pad_w = K_W / 2;
 
     for (int oc = 0; oc < OUT_C; ++oc) {
+        data_t even_row_max[POOL_W];
+#pragma HLS RESOURCE variable=even_row_max core=RAM_S2P_BRAM
+        for (int pw = 0; pw < POOL_W; ++pw) {
+#pragma HLS PIPELINE II=1
+            even_row_max[pw] = kNegInf;
+        }
+
+        const data_t bias = data_t(biases[oc]);
+        const data_t scale = data_t(bn_scale[oc]);
+        const data_t offset = data_t(bn_offset[oc]);
+
         for (int h = 0; h < OUT_H; ++h) {
+            data_t curr_row_max[POOL_W];
+#pragma HLS RESOURCE variable=curr_row_max core=RAM_S2P_BRAM
+            for (int pw = 0; pw < POOL_W; ++pw) {
+#pragma HLS PIPELINE II=1
+                curr_row_max[pw] = kNegInf;
+            }
+
             for (int w = 0; w < OUT_W; ++w) {
 #pragma HLS PIPELINE II=1
-                data_t acc = data_t(biases[oc]);
+                data_t acc = bias;
 
                 for (int ic = 0; ic < IN_C; ++ic) {
                     for (int kh = 0; kh < K_H; ++kh) {
@@ -39,54 +60,40 @@ void conv_bn_relu(
 
                             int weight_idx = (((oc * IN_C) + ic) * K_H + kh) * K_W + kw;
                             data_t weight_val = data_t(weights[weight_idx]);
-                            data_t input_val = input[in_h][in_w][ic];
-                            acc += weight_val * input_val;
+                            acc += weight_val * input[in_h][in_w][ic];
                         }
                     }
                 }
 
-                data_t scale = data_t(bn_scale[oc]);
-                data_t offset = data_t(bn_offset[oc]);
                 data_t bn_out = acc * scale + offset;
-                output[h][w][oc] = (bn_out > data_t(0)) ? bn_out : data_t(0);
-            }
-        }
-    }
-}
+                data_t relu_out = (bn_out > data_t(0)) ? bn_out : data_t(0);
 
-template <int IN_H, int IN_W, int CHANNELS,
-          int OUT_H, int OUT_W>
-void maxpool2x2(
-    const data_t input[IN_H][IN_W][CHANNELS],
-    data_t output[OUT_H][OUT_W][CHANNELS]
-) {
-#pragma HLS INLINE
-    for (int c = 0; c < CHANNELS; ++c) {
-        for (int h = 0; h < OUT_H; ++h) {
-            for (int w = 0; w < OUT_W; ++w) {
-#pragma HLS PIPELINE II=1
-                int base_h = h * 2;
-                int base_w = w * 2;
-                data_t max_val = data_t(-1e6);
-
-                for (int kh = 0; kh < 2; ++kh) {
-                    int in_h = base_h + kh;
-                    if (in_h >= IN_H) {
-                        continue;
-                    }
-                    for (int kw = 0; kw < 2; ++kw) {
-                        int in_w = base_w + kw;
-                        if (in_w >= IN_W) {
-                            continue;
-                        }
-                        data_t val = input[in_h][in_w][c];
-                        if (val > max_val) {
-                            max_val = val;
-                        }
-                    }
+                int pool_w_idx = w >> 1;
+                if (relu_out > curr_row_max[pool_w_idx]) {
+                    curr_row_max[pool_w_idx] = relu_out;
                 }
 
-                output[h][w][c] = max_val;
+                if ((h & 1) && (w & 1)) {
+                    data_t pooled = even_row_max[pool_w_idx];
+                    if (curr_row_max[pool_w_idx] > pooled) {
+                        pooled = curr_row_max[pool_w_idx];
+                    }
+                    output[h >> 1][pool_w_idx][oc] = pooled;
+                }
+            }
+
+            if ((h & 1) == 0) {
+                for (int pw = 0; pw < POOL_W; ++pw) {
+#pragma HLS PIPELINE II=1
+                    if (curr_row_max[pw] > even_row_max[pw]) {
+                        even_row_max[pw] = curr_row_max[pw];
+                    }
+                }
+            } else {
+                for (int pw = 0; pw < POOL_W; ++pw) {
+#pragma HLS PIPELINE II=1
+                    even_row_max[pw] = kNegInf;
+                }
             }
         }
     }
@@ -171,65 +178,41 @@ void ecg_cnn_inference(
     data_t output[NUM_CLASSES]
 ) {
 #pragma HLS DATAFLOW
-    static data_t stage0[INPUT_HEIGHT][INPUT_WIDTH][INPUT_CHANNELS];
-#pragma HLS ARRAY_PARTITION variable=stage0 complete dim=3
-
-    for (int h = 0; h < INPUT_HEIGHT; ++h) {
-        for (int w = 0; w < INPUT_WIDTH; ++w) {
-            for (int c = 0; c < INPUT_CHANNELS; ++c) {
-#pragma HLS PIPELINE II=1
-                stage0[h][w][c] = input[h][w][c];
-            }
-        }
-    }
-
-    static data_t conv1_out[CONV1_OUTPUT_HEIGHT][CONV1_OUTPUT_WIDTH][CONV1_OUT_CHANNELS];
     static data_t pool1_out[POOL1_OUTPUT_HEIGHT][POOL1_OUTPUT_WIDTH][POOL1_OUTPUT_CHANNELS];
-    static data_t conv2_out[CONV2_OUTPUT_HEIGHT][CONV2_OUTPUT_WIDTH][CONV2_OUT_CHANNELS];
+#pragma HLS RESOURCE variable=pool1_out core=RAM_S2P_BRAM
     static data_t pool2_out[POOL2_OUTPUT_HEIGHT][POOL2_OUTPUT_WIDTH][POOL2_OUTPUT_CHANNELS];
-    static data_t conv3_out[CONV3_OUTPUT_HEIGHT][CONV3_OUTPUT_WIDTH][CONV3_OUT_CHANNELS];
+#pragma HLS RESOURCE variable=pool2_out core=RAM_S2P_BRAM
     static data_t pool3_out[POOL3_OUTPUT_HEIGHT][POOL3_OUTPUT_WIDTH][POOL3_OUTPUT_CHANNELS];
+#pragma HLS RESOURCE variable=pool3_out core=RAM_S2P_BRAM
     static data_t dense_input[FLATTEN_SIZE];
     static data_t dense1_out[DENSE1_OUTPUTS];
     static data_t logits[NUM_CLASSES];
 
-    conv_bn_relu<INPUT_HEIGHT, INPUT_WIDTH, INPUT_CHANNELS,
-                 CONV1_OUTPUT_HEIGHT, CONV1_OUTPUT_WIDTH, CONV1_OUT_CHANNELS,
-                 CONV1_KERNEL_H, CONV1_KERNEL_W>(
-        stage0, conv1_out,
+    conv_bn_relu_pool<INPUT_HEIGHT, INPUT_WIDTH, INPUT_CHANNELS,
+                      CONV1_OUTPUT_HEIGHT, CONV1_OUTPUT_WIDTH, CONV1_OUT_CHANNELS,
+                      POOL1_OUTPUT_HEIGHT, POOL1_OUTPUT_WIDTH,
+                      CONV1_KERNEL_H, CONV1_KERNEL_W>(
+        input, pool1_out,
         CONV1_WEIGHTS, CONV1_BIASES,
         CONV1_BN_SCALE, CONV1_BN_OFFSET
     );
 
-    maxpool2x2<CONV1_OUTPUT_HEIGHT, CONV1_OUTPUT_WIDTH, CONV1_OUT_CHANNELS,
-               POOL1_OUTPUT_HEIGHT, POOL1_OUTPUT_WIDTH>(
-        conv1_out, pool1_out
-    );
-
-    conv_bn_relu<POOL1_OUTPUT_HEIGHT, POOL1_OUTPUT_WIDTH, POOL1_OUTPUT_CHANNELS,
-                 CONV2_OUTPUT_HEIGHT, CONV2_OUTPUT_WIDTH, CONV2_OUT_CHANNELS,
-                 CONV2_KERNEL_H, CONV2_KERNEL_W>(
-        pool1_out, conv2_out,
+    conv_bn_relu_pool<POOL1_OUTPUT_HEIGHT, POOL1_OUTPUT_WIDTH, POOL1_OUTPUT_CHANNELS,
+                      CONV2_OUTPUT_HEIGHT, CONV2_OUTPUT_WIDTH, CONV2_OUT_CHANNELS,
+                      POOL2_OUTPUT_HEIGHT, POOL2_OUTPUT_WIDTH,
+                      CONV2_KERNEL_H, CONV2_KERNEL_W>(
+        pool1_out, pool2_out,
         CONV2_WEIGHTS, CONV2_BIASES,
         CONV2_BN_SCALE, CONV2_BN_OFFSET
     );
 
-    maxpool2x2<CONV2_OUTPUT_HEIGHT, CONV2_OUTPUT_WIDTH, CONV2_OUT_CHANNELS,
-               POOL2_OUTPUT_HEIGHT, POOL2_OUTPUT_WIDTH>(
-        conv2_out, pool2_out
-    );
-
-    conv_bn_relu<POOL2_OUTPUT_HEIGHT, POOL2_OUTPUT_WIDTH, POOL2_OUTPUT_CHANNELS,
-                 CONV3_OUTPUT_HEIGHT, CONV3_OUTPUT_WIDTH, CONV3_OUT_CHANNELS,
-                 CONV3_KERNEL_H, CONV3_KERNEL_W>(
-        pool2_out, conv3_out,
+    conv_bn_relu_pool<POOL2_OUTPUT_HEIGHT, POOL2_OUTPUT_WIDTH, POOL2_OUTPUT_CHANNELS,
+                      CONV3_OUTPUT_HEIGHT, CONV3_OUTPUT_WIDTH, CONV3_OUT_CHANNELS,
+                      POOL3_OUTPUT_HEIGHT, POOL3_OUTPUT_WIDTH,
+                      CONV3_KERNEL_H, CONV3_KERNEL_W>(
+        pool2_out, pool3_out,
         CONV3_WEIGHTS, CONV3_BIASES,
         CONV3_BN_SCALE, CONV3_BN_OFFSET
-    );
-
-    maxpool2x2<CONV3_OUTPUT_HEIGHT, CONV3_OUTPUT_WIDTH, CONV3_OUT_CHANNELS,
-               POOL3_OUTPUT_HEIGHT, POOL3_OUTPUT_WIDTH>(
-        conv3_out, pool3_out
     );
 
     flatten<POOL3_OUTPUT_HEIGHT, POOL3_OUTPUT_WIDTH, POOL3_OUTPUT_CHANNELS,
