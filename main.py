@@ -23,7 +23,16 @@ from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.utils import class_weight
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Dropout, Conv2D, MaxPooling2D, BatchNormalization, Flatten
+from tensorflow.keras import regularizers
+from tensorflow.keras.layers import (
+    Dense,
+    Dropout,
+    Conv2D,
+    MaxPooling2D,
+    BatchNormalization,
+    Flatten,
+    SpatialDropout2D,
+)
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from tensorflow.keras.utils import Sequence
@@ -329,6 +338,10 @@ def create_wavelet_tensors(
     else:
         tensors = np.empty(target_shape, dtype=dtype)
 
+    channel_sum = np.zeros(num_channels, dtype=np.float64)
+    channel_sq_sum = np.zeros(num_channels, dtype=np.float64)
+    channel_counts = np.zeros(num_channels, dtype=np.int64)
+
     for idx, beat in enumerate(beats):
         if idx % 1000 == 0:
             print(f"   生成小波张量 {idx + 1}/{len(beats)}")
@@ -336,29 +349,50 @@ def create_wavelet_tensors(
         beat_norm = (beat - np.mean(beat)) / (np.std(beat) + 1e-8)
 
         coefficients, _ = pywt.cwt(beat_norm, scales, wavelet)
-        scalogram = np.abs(coefficients).astype(np.float32)
-
-        # 归一化到 [0, 1]
-        min_val = np.min(scalogram)
-        max_val = np.max(scalogram)
-        scalogram = (scalogram - min_val) / (max_val - min_val + 1e-8)
+        scalogram = np.log1p(np.abs(coefficients).astype(np.float32))
 
         if channel_strategy == 'cardiac_band' and frequency_masks is not None:
-            channels = []
-            for mask in frequency_masks:
-                band_view = scalogram * mask[:, np.newaxis]
-                max_band = np.max(band_view)
-                min_band = np.min(band_view)
-                if max_band > min_band:
-                    band_view = (band_view - min_band) / (max_band - min_band)
-                channels.append(band_view)
-            stacked = np.stack(channels, axis=-1)
+            stacked = np.zeros((len(scales), signal_length, num_channels), dtype=np.float32)
+            for channel_idx, mask in enumerate(frequency_masks):
+                active_rows = mask > 0
+                band_slice = scalogram[active_rows, :]
+                if band_slice.size == 0:
+                    continue
+                channel_sum[channel_idx] += float(np.sum(band_slice))
+                channel_sq_sum[channel_idx] += float(np.sum(np.square(band_slice)))
+                channel_counts[channel_idx] += band_slice.size
+                stacked[:, :, channel_idx] = scalogram * mask[:, np.newaxis]
         else:
             stacked = scalogram[..., np.newaxis]
+            channel_sum[0] += float(np.sum(scalogram))
+            channel_sq_sum[0] += float(np.sum(np.square(scalogram)))
+            channel_counts[0] += scalogram.size
 
         tensors[idx] = stacked.astype(dtype, copy=False)
 
+    clip_min, clip_max = -5.0, 5.0
+    channel_mean = np.divide(
+        channel_sum,
+        channel_counts,
+        out=np.zeros_like(channel_sum),
+        where=channel_counts > 0,
+    )
+    channel_var = np.divide(
+        channel_sq_sum,
+        channel_counts,
+        out=np.zeros_like(channel_sq_sum),
+        where=channel_counts > 0,
+    ) - np.square(channel_mean)
+    channel_var = np.maximum(channel_var, 1e-6)
+    channel_std = np.sqrt(channel_var)
+
     if isinstance(tensors, np.memmap):
+        for idx in range(num_samples):
+            sample = np.asarray(tensors[idx], dtype=np.float32)
+            normalized = (sample - channel_mean.reshape((1, 1, num_channels))) / channel_std.reshape((1, 1, num_channels))
+            normalized = np.clip(normalized, clip_min, clip_max)
+            tensors[idx] = normalized.astype(dtype, copy=False)
+
         tensors.flush()
         info = {
             'path': str(memmap_path),
@@ -367,15 +401,41 @@ def create_wavelet_tensors(
             'timestamp': timestamp,
             'wavelet': wavelet,
             'channel_strategy': channel_strategy,
+            'normalization': {
+                'type': 'log1p_zscore',
+                'clip_range': [clip_min, clip_max],
+                'channel_mean': channel_mean.astype(np.float32).tolist(),
+                'channel_std': channel_std.astype(np.float32).tolist(),
+            },
         }
         readonly_memmap = np.memmap(memmap_path, mode='r', dtype=dtype, shape=target_shape)
         return readonly_memmap, info
 
+    tensors = tensors.astype(np.float32)
+    tensors = (tensors - channel_mean.reshape((1, 1, 1, num_channels))) / channel_std.reshape((1, 1, 1, num_channels))
+    tensors = np.clip(tensors, clip_min, clip_max)
+
+    info = {
+        'shape': list(target_shape),
+        'dtype': tensors.dtype.str,
+        'wavelet': wavelet,
+        'channel_strategy': channel_strategy,
+        'normalization': {
+            'type': 'log1p_zscore',
+            'clip_range': [clip_min, clip_max],
+            'channel_mean': channel_mean.astype(np.float32).tolist(),
+            'channel_std': channel_std.astype(np.float32).tolist(),
+        },
+    }
+
     if output_format == '2d':
-        return tensors.astype(np.float32), {'shape': list(target_shape), 'dtype': tensors.dtype.str}
+        return tensors, info
     if output_format == 'sequence':
         reshaped = tensors.reshape(tensors.shape[0], tensors.shape[2], -1)
-        return reshaped.astype(np.float32), {'shape': list(reshaped.shape), 'dtype': reshaped.dtype.str}
+        seq_info = info.copy()
+        seq_info['shape'] = list(reshaped.shape)
+        seq_info['dtype'] = reshaped.dtype.str
+        return reshaped.astype(np.float32), seq_info
 
     raise ValueError("output_format must be '2d' or 'sequence'")
 
@@ -768,32 +828,62 @@ def build_mlp_model(input_dim, num_classes):
     return model
 
 
-def build_cnn_model(input_shape, num_classes, learning_rate=0.001):
-    """构建基于小波张量的CNN模型"""
-    model = Sequential([
-        tf.keras.layers.Input(shape=input_shape),
-        Conv2D(32, (3, 3), padding='same', activation='relu'),
-        BatchNormalization(),
-        MaxPooling2D((2, 2)),
-        Dropout(0.25),
-        Conv2D(64, (3, 3), padding='same', activation='relu'),
-        BatchNormalization(),
-        MaxPooling2D((2, 2)),
-        Dropout(0.3),
-        Conv2D(128, (3, 3), padding='same', activation='relu'),
-        BatchNormalization(),
-        MaxPooling2D((2, 2)),
-        Dropout(0.4),
-        Flatten(),
-        Dense(128, activation='relu'),
-        Dropout(0.4),
-        Dense(num_classes, activation='softmax')
-    ])
+def build_cnn_model(input_shape, num_classes, learning_rate=3e-4, weight_decay=1e-4):
+    """构建正则化增强的CWT-CNN模型，提高稳定性与泛化能力"""
+
+    kernel_regularizer = regularizers.l2(weight_decay)
+
+    def conv_block(x, filters, kernel_size=(3, 3), pool=True, dropout_rate=0.2, dilation_rate=1):
+        x = Conv2D(
+            filters,
+            kernel_size,
+            padding='same',
+            dilation_rate=dilation_rate,
+            use_bias=False,
+            kernel_initializer='he_normal',
+            kernel_regularizer=kernel_regularizer,
+        )(x)
+        x = BatchNormalization()(x)
+        x = tf.keras.layers.Activation('relu')(x)
+        x = SpatialDropout2D(dropout_rate)(x)
+        if pool:
+            x = MaxPooling2D((2, 2))(x)
+        return x
+
+    inputs = tf.keras.layers.Input(shape=input_shape)
+    x = conv_block(inputs, 48, kernel_size=(5, 5), dropout_rate=0.1)
+    x = conv_block(x, 96, kernel_size=(3, 3), dropout_rate=0.15, dilation_rate=2)
+    x = conv_block(x, 160, kernel_size=(3, 3), dropout_rate=0.2)
+    x = Flatten()(x)
+    x = Dense(
+        256,
+        activation='relu',
+        kernel_initializer='he_normal',
+        kernel_regularizer=kernel_regularizer,
+    )(x)
+    x = Dropout(0.45)(x)
+    x = Dense(
+        128,
+        activation='relu',
+        kernel_initializer='he_normal',
+        kernel_regularizer=kernel_regularizer,
+    )(x)
+    x = Dropout(0.35)(x)
+
+    outputs = Dense(num_classes, activation='softmax')(x)
+
+    model = tf.keras.Model(inputs=inputs, outputs=outputs, name='wavelet_regularized_cnn')
+
+    optimizer = Adam(learning_rate=learning_rate)
+    loss = tf.keras.losses.SparseCategoricalCrossentropy(label_smoothing=0.1)
 
     model.compile(
-        optimizer=Adam(learning_rate=learning_rate),
-        loss='sparse_categorical_crossentropy',
-        metrics=['accuracy']
+        optimizer=optimizer,
+        loss=loss,
+        metrics=[
+            'accuracy',
+            tf.keras.metrics.SparseTopKCategoricalAccuracy(name='top3_accuracy', k=3),
+        ]
     )
 
     return model
@@ -931,15 +1021,23 @@ def train_cnn_model(
         verbose=1,
     )
 
-    val_loss, val_accuracy = model.evaluate(val_sequence, verbose=0)
-    test_loss, test_accuracy = model.evaluate(test_sequence, verbose=0)
+    val_metrics = model.evaluate(val_sequence, verbose=0, return_dict=True)
+    test_metrics = model.evaluate(test_sequence, verbose=0, return_dict=True)
+
+    val_loss = float(val_metrics.get('loss', 0.0))
+    val_accuracy = float(val_metrics.get('accuracy', 0.0))
+    val_top3 = float(val_metrics.get('top3_accuracy', 0.0))
+
+    test_loss = float(test_metrics.get('loss', 0.0))
+    test_accuracy = float(test_metrics.get('accuracy', 0.0))
+    test_top3 = float(test_metrics.get('top3_accuracy', 0.0))
     y_pred = model.predict(test_sequence, verbose=0)
     y_pred_classes = np.argmax(y_pred, axis=1)
     y_test = test_sequence.get_labels()
 
     print(f"\n✅ CNN训练完成!")
-    print(f"   验证准确率: {val_accuracy:.4f} (loss={val_loss:.4f})")
-    print(f"   测试准确率: {test_accuracy:.4f} (loss={test_loss:.4f})")
+    print(f"   验证准确率: {val_accuracy:.4f} (Top-3={val_top3:.4f}, loss={val_loss:.4f})")
+    print(f"   测试准确率: {test_accuracy:.4f} (Top-3={test_top3:.4f}, loss={test_loss:.4f})")
 
     unique_eval_classes = np.unique(y_test)
     target_names = [class_names[idx] for idx in unique_eval_classes]
@@ -964,10 +1062,12 @@ def train_cnn_model(
     print(textual_report)
 
     evaluation_summary = {
-        'val_loss': float(val_loss),
-        'val_accuracy': float(val_accuracy),
-        'test_loss': float(test_loss),
-        'test_accuracy': float(test_accuracy),
+        'val_loss': val_loss,
+        'val_accuracy': val_accuracy,
+        'val_top3_accuracy': val_top3,
+        'test_loss': test_loss,
+        'test_accuracy': test_accuracy,
+        'test_top3_accuracy': test_top3,
         'train_distribution': train_distribution,
         'validation_distribution': val_distribution,
         'test_distribution': test_distribution,
@@ -1717,6 +1817,7 @@ def main():
                 'sampling_rate': loader.fs,
                 'channel_strategy': 'cardiac_band',
                 'bands': _serialize_wavelet_bands(CARDIAC_WAVELET_BANDS),
+                'normalization': wavelet_info.get('normalization'),
             }
 
             fpga_output_dir, weight_statistics = create_fpga_deployment_package(
@@ -1740,6 +1841,10 @@ def main():
                 validation_metrics={
                     'val_accuracy': evaluation_summary.get('val_accuracy'),
                     'val_loss': evaluation_summary.get('val_loss'),
+                    'val_top3_accuracy': evaluation_summary.get('val_top3_accuracy'),
+                    'test_accuracy': evaluation_summary.get('test_accuracy'),
+                    'test_top3_accuracy': evaluation_summary.get('test_top3_accuracy'),
+                    'test_loss': evaluation_summary.get('test_loss'),
                 },
                 wavelet_band_info=_serialize_wavelet_bands(CARDIAC_WAVELET_BANDS),
                 cwt_settings=cwt_settings,
@@ -1755,8 +1860,10 @@ def main():
                 'total_beats': int(len(beats)),
                 'feature_tensor_shape': list(tensor_shape[1:]),
                 'test_accuracy': float(evaluation_summary.get('test_accuracy', 0.0)),
+                'test_top3_accuracy': float(evaluation_summary.get('test_top3_accuracy', 0.0)),
                 'test_loss': float(evaluation_summary.get('test_loss', 0.0)),
                 'validation_accuracy': float(evaluation_summary.get('val_accuracy', 0.0)),
+                'validation_top3_accuracy': float(evaluation_summary.get('val_top3_accuracy', 0.0)),
                 'validation_loss': float(evaluation_summary.get('val_loss', 0.0)),
                 'train_distribution': evaluation_summary.get('train_distribution', {}),
                 'validation_distribution': evaluation_summary.get('validation_distribution', {}),
@@ -1788,6 +1895,7 @@ def main():
                     'path': wavelet_info.get('path'),
                     'dtype': wavelet_info.get('dtype'),
                     'shape': tensor_shape,
+                    'normalization': wavelet_info.get('normalization'),
                 },
             }
 
@@ -1805,7 +1913,9 @@ def main():
             print(f"💓 训练心拍数: {len(beats):,}")
             print(f"🔧 小波张量尺寸: {tensor_shape[1:]}")
             print(
-                f"🧠 验证准确率: {evaluation_summary.get('val_accuracy', 0.0):.4f} / 测试准确率: {evaluation_summary.get('test_accuracy', 0.0):.4f}"
+                "🧠 验证准确率: "
+                f"{evaluation_summary.get('val_accuracy', 0.0):.4f} (Top-3 {evaluation_summary.get('val_top3_accuracy', 0.0):.4f}) / "
+                f"测试准确率: {evaluation_summary.get('test_accuracy', 0.0):.4f} (Top-3 {evaluation_summary.get('test_top3_accuracy', 0.0):.4f})"
             )
             print(f"⏱️  训练耗时: {results['training_time']:.1f} 秒")
             print(f"📁 FPGA部署包: {fpga_output_dir}")
