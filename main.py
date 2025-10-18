@@ -26,6 +26,7 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout, Conv2D, MaxPooling2D, BatchNormalization, Flatten
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
+from tensorflow.keras.utils import Sequence
 import matplotlib.pyplot as plt
 import warnings
 warnings.filterwarnings('ignore')
@@ -273,9 +274,11 @@ def create_wavelet_tensors(
     scales=None,
     output_format='2d',
     fs=360,
-    channel_strategy='cardiac_band'
+    channel_strategy='cardiac_band',
+    cache_dir='outputs/cache',
+    dtype=np.float16,
 ):
-    """根据心拍生成小波张量
+    """根据心拍生成小波张量并可选落盘缓存以降低内存峰值
 
     Args:
         beats (np.ndarray): 心拍集合，形状为 [N, T]
@@ -284,9 +287,11 @@ def create_wavelet_tensors(
         output_format (str): "2d" 返回 [N, H, W, C] 张量, "sequence" 返回 [N, T, C]
         fs (int): 采样频率
         channel_strategy (str): 生成通道的策略，默认为根据P/QRS/T频段生成多通道
+        cache_dir (str or Path): 若提供则使用内存映射文件缓存结果，避免一次性占满内存
+        dtype (np.dtype): 存储小波张量的精度，默认为 float16 以压缩磁盘/内存占用
 
     Returns:
-        np.ndarray: 小波张量
+        tuple[np.memmap, dict]: 生成的小波张量内存映射及相关元信息
     """
 
     if scales is None:
@@ -295,19 +300,42 @@ def create_wavelet_tensors(
     if channel_strategy not in {'cardiac_band', 'single'}:
         raise ValueError("channel_strategy must be 'cardiac_band' or 'single'")
 
+    beats = np.asarray(beats, dtype=np.float32)
+    if beats.ndim != 2:
+        raise ValueError("beats 必须是形状为 [N, T] 的二维数组")
+
+    num_samples, signal_length = beats.shape
+    if num_samples == 0:
+        raise ValueError("传入的心拍数量为0，无法生成小波张量")
+
     frequency_masks = None
     if channel_strategy == 'cardiac_band':
         frequency_masks = _build_frequency_masks(scales, wavelet, fs, CARDIAC_WAVELET_BANDS)
 
-    tensors = []
+    num_channels = len(frequency_masks) if frequency_masks is not None else 1
+    dtype = np.dtype(dtype)
+
+    memmap = None
+    memmap_path = None
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    target_shape = (num_samples, len(scales), signal_length, num_channels)
+
+    if cache_dir is not None:
+        cache_dir = Path(cache_dir)
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        memmap_path = cache_dir / f'wavelet_tensors_{timestamp}.dat'
+        memmap = np.memmap(memmap_path, mode='w+', dtype=dtype, shape=target_shape)
+        tensors = memmap
+    else:
+        tensors = np.empty(target_shape, dtype=dtype)
+
     for idx, beat in enumerate(beats):
         if idx % 1000 == 0:
             print(f"   生成小波张量 {idx + 1}/{len(beats)}")
 
-        beat = np.asarray(beat, dtype=np.float32)
-        beat = (beat - np.mean(beat)) / (np.std(beat) + 1e-8)
+        beat_norm = (beat - np.mean(beat)) / (np.std(beat) + 1e-8)
 
-        coefficients, _ = pywt.cwt(beat, scales, wavelet)
+        coefficients, _ = pywt.cwt(beat_norm, scales, wavelet)
         scalogram = np.abs(coefficients).astype(np.float32)
 
         # 归一化到 [0, 1]
@@ -315,11 +343,10 @@ def create_wavelet_tensors(
         max_val = np.max(scalogram)
         scalogram = (scalogram - min_val) / (max_val - min_val + 1e-8)
 
-        if channel_strategy == 'cardiac_band':
+        if channel_strategy == 'cardiac_band' and frequency_masks is not None:
             channels = []
             for mask in frequency_masks:
                 band_view = scalogram * mask[:, np.newaxis]
-                # 对每个频段再次归一化，避免能量差异过大
                 max_band = np.max(band_view)
                 min_band = np.min(band_view)
                 if max_band > min_band:
@@ -329,16 +356,26 @@ def create_wavelet_tensors(
         else:
             stacked = scalogram[..., np.newaxis]
 
-        tensors.append(stacked)
+        tensors[idx] = stacked.astype(dtype, copy=False)
 
-    tensors = np.stack(tensors)
+    if isinstance(tensors, np.memmap):
+        tensors.flush()
+        info = {
+            'path': str(memmap_path),
+            'shape': list(target_shape),
+            'dtype': tensors.dtype.str,
+            'timestamp': timestamp,
+            'wavelet': wavelet,
+            'channel_strategy': channel_strategy,
+        }
+        readonly_memmap = np.memmap(memmap_path, mode='r', dtype=dtype, shape=target_shape)
+        return readonly_memmap, info
 
     if output_format == '2d':
-        return tensors.astype(np.float32)
+        return tensors.astype(np.float32), {'shape': list(target_shape), 'dtype': tensors.dtype.str}
     if output_format == 'sequence':
-        # [N, H, W, C] -> [N, W, H * C]
         reshaped = tensors.reshape(tensors.shape[0], tensors.shape[2], -1)
-        return reshaped.astype(np.float32)
+        return reshaped.astype(np.float32), {'shape': list(reshaped.shape), 'dtype': reshaped.dtype.str}
 
     raise ValueError("output_format must be '2d' or 'sequence'")
 
@@ -502,6 +539,189 @@ def rebalance_training_data(
     permutation = rng.permutation(len(y_augmented))
     return X_augmented[permutation], y_augmented[permutation], augmentations
 
+
+class WaveletTensorSequence(Sequence):
+    """基于内存映射小波张量的批量加载器"""
+
+    def __init__(
+        self,
+        memmap_info,
+        indices,
+        labels,
+        batch_size=32,
+        shuffle=False,
+        augment=False,
+        noise_std=0.01,
+        max_shift=4,
+        scale_range=(0.9, 1.1),
+        oversample_target=None,
+        adaptive_target=True,
+        seed=42,
+    ):
+        if not isinstance(memmap_info, dict):
+            raise ValueError('memmap_info 必须为字典类型')
+
+        self.memmap_path = memmap_info.get('path')
+        self.memmap_shape = tuple(memmap_info.get('shape', ()))
+        self.memmap_dtype = np.dtype(memmap_info.get('dtype', np.float16))
+
+        if not self.memmap_path or not self.memmap_shape:
+            raise ValueError('memmap_info 缺少路径或形状信息')
+
+        self._memmap = np.memmap(
+            self.memmap_path,
+            mode='r',
+            dtype=self.memmap_dtype,
+            shape=self.memmap_shape,
+        )
+
+        self.base_indices = np.asarray(indices, dtype=np.int64)
+        self.base_labels = np.asarray(labels, dtype=np.int32)
+
+        if self.base_indices.size != self.base_labels.size:
+            raise ValueError('indices 与 labels 长度不一致')
+
+        self.batch_size = int(batch_size)
+        self.shuffle = bool(shuffle)
+        self.augment = bool(augment)
+        self.noise_std = float(noise_std)
+        self.max_shift = int(max_shift)
+        self.scale_range = scale_range
+        self.adaptive_target = bool(adaptive_target)
+        self.rng = np.random.default_rng(seed)
+        self.sample_shape = tuple(self.memmap_shape[1:])
+
+        self.indices = self.base_indices.copy()
+        self.labels = self.base_labels.copy()
+        self.augmentations = {}
+        self.min_samples_per_class = int(oversample_target) if oversample_target is not None else None
+
+        if oversample_target is not None and self.base_labels.size:
+            self._apply_oversampling(int(oversample_target))
+
+        self.on_epoch_end()
+
+    def _apply_oversampling(self, min_samples_per_class):
+        unique_labels, counts = np.unique(self.base_labels, return_counts=True)
+        if unique_labels.size == 0:
+            return
+
+        target = min_samples_per_class
+        if self.adaptive_target and counts.size:
+            percentile_75 = np.percentile(counts, 75)
+            target = max(min_samples_per_class, int(np.ceil(percentile_75)))
+
+        augmented_indices = [self.base_indices]
+        augmented_labels = [self.base_labels]
+        augmentations = {}
+
+        for label, count in zip(unique_labels, counts):
+            if count >= target:
+                continue
+
+            mask = self.base_labels == label
+            label_indices = self.base_indices[mask]
+            if label_indices.size == 0:
+                continue
+
+            needed = int(target - count)
+            sampled = self.rng.choice(label_indices, size=needed, replace=True)
+
+            augmented_indices.append(sampled.astype(np.int64))
+            augmented_labels.append(np.full(needed, label, dtype=np.int32))
+            augmentations[int(label)] = {
+                'original': int(count),
+                'added': int(needed),
+                'final': int(count + needed),
+                'target': int(target),
+            }
+
+        if len(augmented_indices) > 1:
+            self.indices = np.concatenate(augmented_indices)
+            self.labels = np.concatenate(augmented_labels)
+        else:
+            self.indices = self.base_indices.copy()
+            self.labels = self.base_labels.copy()
+
+        self.augmentations = augmentations
+
+    def __len__(self):
+        if self.batch_size <= 0:
+            raise ValueError('batch_size 必须大于0')
+        return int(np.ceil(len(self.indices) / self.batch_size))
+
+    def __getitem__(self, idx):
+        start = idx * self.batch_size
+        end = min(start + self.batch_size, len(self.indices))
+        batch_indices = self.indices[start:end]
+        batch_labels = self.labels[start:end]
+
+        batch = np.asarray(self._memmap[batch_indices], dtype=np.float32)
+        if self.augment:
+            batch = _augment_cwt_samples(
+                batch,
+                rng=self.rng,
+                noise_std=self.noise_std,
+                max_shift=self.max_shift,
+                scale_range=self.scale_range,
+            )
+
+        return batch, batch_labels
+
+    def on_epoch_end(self):
+        if self.shuffle and len(self.indices) > 1:
+            permutation = self.rng.permutation(len(self.indices))
+            self.indices = self.indices[permutation]
+            self.labels = self.labels[permutation]
+
+    def get_base_distribution(self, class_names):
+        return compute_class_distribution(self.base_labels, class_names)
+
+    def get_balanced_distribution(self, class_names):
+        return compute_class_distribution(self.labels, class_names)
+
+    def get_effective_size(self):
+        return int(len(self.indices))
+
+    def get_original_size(self):
+        return int(len(self.base_labels))
+
+    def get_augmentations(self):
+        return self.augmentations
+
+    def get_labels(self):
+        return self.base_labels.copy()
+
+    def get_numpy_subset(self, subset_indices):
+        subset_indices = np.asarray(subset_indices, dtype=np.int64)
+        return np.asarray(self._memmap[subset_indices], dtype=np.float32)
+
+
+def sample_wavelet_representatives(memmap_info, indices, sample_size=512, seed=42):
+    """从小波张量内存映射中抽取代表性样本，用于量化或调试"""
+
+    if not isinstance(memmap_info, dict):
+        raise ValueError('memmap_info 必须为字典类型')
+
+    indices = np.asarray(indices, dtype=np.int64)
+    if indices.size == 0:
+        return np.empty((0,) + tuple(memmap_info.get('shape', (0,))[1:]), dtype=np.float32)
+
+    rng = np.random.default_rng(seed)
+    sample_size = min(int(sample_size), indices.size)
+    chosen = rng.choice(indices, size=sample_size, replace=False)
+
+    memmap = np.memmap(
+        memmap_info['path'],
+        mode='r',
+        dtype=np.dtype(memmap_info.get('dtype', np.float16)),
+        shape=tuple(memmap_info.get('shape', ())),
+    )
+    samples = np.asarray(memmap[chosen], dtype=np.float32)
+
+    return samples
+
+
 def extract_all_features(beats):
     """提取所有特征"""
     print("🔧 提取特征...")
@@ -635,24 +855,22 @@ def train_model(X_train, X_test, y_train, y_test, class_names=None):
     return model, scaler, test_accuracy, history, textual_report, report_dict, conf_matrix
 
 
-def train_cnn_model(X_train,
-                    y_train,
-                    X_val,
-                    y_val,
-                    X_test,
-                    y_test,
-                    class_names,
-                    epochs=40,
-                    batch_size=32,
-                    min_samples_per_class=32,
-                    oversample_noise_std=0.02):
+def train_cnn_model(
+    train_sequence,
+    val_sequence,
+    test_sequence,
+    class_names,
+    epochs=40,
+    class_weight_strategy='balanced',
+    augmentation_strategy=None,
+):
     """使用CNN训练基于小波张量的模型，并提供更丰富的调试信息"""
 
     print("🧠 训练CNN模型...")
 
-    train_distribution = compute_class_distribution(y_train, class_names)
-    val_distribution = compute_class_distribution(y_val, class_names)
-    test_distribution = compute_class_distribution(y_test, class_names)
+    train_distribution = train_sequence.get_base_distribution(class_names)
+    val_distribution = val_sequence.get_base_distribution(class_names)
+    test_distribution = test_sequence.get_base_distribution(class_names)
 
     print("   📈 训练集类别分布:")
     for name, count in train_distribution.items():
@@ -666,15 +884,8 @@ def train_cnn_model(X_train,
     for name, count in test_distribution.items():
         print(f"      - {name}: {count}")
 
-    # 处理类别不平衡
-    balanced_X_train, balanced_y_train, augmentations = rebalance_training_data(
-        X_train,
-        y_train,
-        min_samples_per_class=min_samples_per_class,
-        noise_std=oversample_noise_std,
-    )
-
-    balanced_distribution = compute_class_distribution(balanced_y_train, class_names)
+    augmentations = train_sequence.get_augmentations()
+    balanced_distribution = train_sequence.get_balanced_distribution(class_names)
 
     if augmentations:
         print("   ♻️  对以下类别执行了过采样:")
@@ -688,19 +899,23 @@ def train_cnn_model(X_train,
         print("   🔄 过采样后训练集分布:")
         for name, count in balanced_distribution.items():
             print(f"      - {name}: {count}")
-        print("   （已应用随机平移、缩放和噪声扰动增强小波张量）")
+        if train_sequence.augment:
+            print("   （小波张量在批次中应用随机平移/缩放/噪声增强）")
 
     num_classes = len(class_names)
-    model = build_cnn_model(X_train.shape[1:], num_classes)
+    model = build_cnn_model(train_sequence.sample_shape, num_classes)
 
-    unique_classes = np.unique(y_train)
+    base_labels = train_sequence.get_labels()
+    unique_classes = np.unique(base_labels)
     unique_classes = np.sort(unique_classes)
-    class_weights = class_weight.compute_class_weight(
-        class_weight='balanced',
-        classes=unique_classes,
-        y=y_train,
-    )
-    class_weight_dict = {int(cls): float(weight) for cls, weight in zip(unique_classes, class_weights)}
+    class_weight_dict = {}
+    if class_weight_strategy:
+        weights = class_weight.compute_class_weight(
+            class_weight=class_weight_strategy,
+            classes=unique_classes,
+            y=base_labels,
+        )
+        class_weight_dict = {int(cls): float(weight) for cls, weight in zip(unique_classes, weights)}
 
     callbacks = [
         EarlyStopping(monitor='val_loss', patience=6, restore_best_weights=True),
@@ -708,27 +923,24 @@ def train_cnn_model(X_train,
     ]
 
     history = model.fit(
-        balanced_X_train,
-        balanced_y_train,
+        train_sequence,
         epochs=epochs,
-        batch_size=batch_size,
-        validation_data=(X_val, y_val),
-        class_weight=class_weight_dict,
+        validation_data=val_sequence,
+        class_weight=class_weight_dict if class_weight_dict else None,
         callbacks=callbacks,
-        shuffle=True,
         verbose=1,
     )
 
-    val_loss, val_accuracy = model.evaluate(X_val, y_val, verbose=0)
-    test_loss, test_accuracy = model.evaluate(X_test, y_test, verbose=0)
-    y_pred = model.predict(X_test, verbose=0)
+    val_loss, val_accuracy = model.evaluate(val_sequence, verbose=0)
+    test_loss, test_accuracy = model.evaluate(test_sequence, verbose=0)
+    y_pred = model.predict(test_sequence, verbose=0)
     y_pred_classes = np.argmax(y_pred, axis=1)
+    y_test = test_sequence.get_labels()
 
     print(f"\n✅ CNN训练完成!")
     print(f"   验证准确率: {val_accuracy:.4f} (loss={val_loss:.4f})")
     print(f"   测试准确率: {test_accuracy:.4f} (loss={test_loss:.4f})")
 
-    # 分类报告与混淆矩阵
     unique_eval_classes = np.unique(y_test)
     target_names = [class_names[idx] for idx in unique_eval_classes]
     textual_report = classification_report(
@@ -761,14 +973,15 @@ def train_cnn_model(X_train,
         'test_distribution': test_distribution,
         'class_weight': class_weight_dict,
         'augmentations': augmentations,
-        'effective_train_size': int(len(balanced_y_train)),
-        'original_train_size': int(len(y_train)),
+        'effective_train_size': train_sequence.get_effective_size(),
+        'original_train_size': train_sequence.get_original_size(),
         'balanced_train_distribution': balanced_distribution,
-        'augmentation_strategy': {
-            'noise_std': oversample_noise_std,
-            'max_time_shift': 4,
-            'scale_range': [0.9, 1.1],
-            'adaptive_target': True,
+        'augmentation_strategy': augmentation_strategy or {
+            'noise_std': train_sequence.noise_std,
+            'max_time_shift': train_sequence.max_shift,
+            'scale_range': list(train_sequence.scale_range) if isinstance(train_sequence.scale_range, (list, tuple)) else train_sequence.scale_range,
+            'adaptive_target': train_sequence.adaptive_target,
+            'target_min_samples': train_sequence.min_samples_per_class,
         },
     }
 
@@ -1374,29 +1587,34 @@ def main():
             cnn_start = time.time()
 
             cwt_scales = np.arange(1, 65)
-            wavelet_tensors = create_wavelet_tensors(
+            _wavelet_memmap, wavelet_info = create_wavelet_tensors(
                 beats,
                 scales=cwt_scales,
                 fs=loader.fs,
                 wavelet='morl',
                 channel_strategy='cardiac_band',
+                cache_dir='outputs/cache',
+                dtype=np.float16,
             )
-            print(f"   ✅ 小波张量形状: {wavelet_tensors.shape}")
+            tensor_shape = tuple(wavelet_info['shape'])
+            print(f"   ✅ 小波张量形状: {tensor_shape}")
+            print(f"   💾 已写入小波缓存文件: {wavelet_info['path']} (dtype={wavelet_info['dtype']})")
             print("   🎯 小波通道覆盖频段:")
             for band in CARDIAC_WAVELET_BANDS:
                 print(
                     f"      - {band['name']}: {band['range_hz'][0]:.1f}-{band['range_hz'][1]:.1f} Hz ({band['description']})"
                 )
 
+            all_indices = np.arange(labels.shape[0])
             (
-                X_train,
-                X_val,
-                X_test,
+                train_indices,
+                val_indices,
+                test_indices,
                 y_train,
                 y_val,
                 y_test,
             ) = stratified_train_val_test_split(
-                wavelet_tensors,
+                all_indices,
                 labels,
                 test_size=0.2,
                 val_size=0.1,
@@ -1404,8 +1622,48 @@ def main():
             )
 
             print(
-                f"   ✅ 数据集划分: 训练 {X_train.shape[0]} / 验证 {X_val.shape[0]} / 测试 {X_test.shape[0]}"
+                f"   ✅ 数据集划分: 训练 {train_indices.shape[0]} / 验证 {val_indices.shape[0]} / 测试 {test_indices.shape[0]}"
             )
+
+            augmentation_config = {
+                'noise_std': 0.02,
+                'max_time_shift': 4,
+                'scale_range': (0.9, 1.1),
+                'target_min_samples': 32,
+                'adaptive_target': True,
+            }
+
+            train_sequence = WaveletTensorSequence(
+                memmap_info=wavelet_info,
+                indices=train_indices,
+                labels=y_train,
+                batch_size=32,
+                shuffle=True,
+                augment=True,
+                noise_std=augmentation_config['noise_std'],
+                max_shift=augmentation_config['max_time_shift'],
+                scale_range=augmentation_config['scale_range'],
+                oversample_target=augmentation_config['target_min_samples'],
+                adaptive_target=augmentation_config['adaptive_target'],
+            )
+            val_sequence = WaveletTensorSequence(
+                memmap_info=wavelet_info,
+                indices=val_indices,
+                labels=y_val,
+                batch_size=32,
+                shuffle=False,
+                augment=False,
+            )
+            test_sequence = WaveletTensorSequence(
+                memmap_info=wavelet_info,
+                indices=test_indices,
+                labels=y_test,
+                batch_size=32,
+                shuffle=False,
+                augment=False,
+            )
+
+            del _wavelet_memmap
 
             (
                 model,
@@ -1415,13 +1673,19 @@ def main():
                 report_dict,
                 conf_matrix,
             ) = train_cnn_model(
-                X_train,
-                y_train,
-                X_val,
-                y_val,
-                X_test,
-                y_test,
+                train_sequence,
+                val_sequence,
+                test_sequence,
                 class_names=class_names,
+                epochs=40,
+                class_weight_strategy='balanced',
+                augmentation_strategy={
+                    'noise_std': augmentation_config['noise_std'],
+                    'max_time_shift': augmentation_config['max_time_shift'],
+                    'scale_range': list(augmentation_config['scale_range']),
+                    'target_min_samples': augmentation_config['target_min_samples'],
+                    'adaptive_target': augmentation_config['adaptive_target'],
+                },
             )
 
             per_class_metrics = _collect_per_class_metrics(report_dict)
@@ -1435,9 +1699,14 @@ def main():
 
             quantized_dir = Path('outputs/quantized_models')
             quantized_dir.mkdir(parents=True, exist_ok=True)
+            representative_data = sample_wavelet_representatives(
+                wavelet_info,
+                np.concatenate([train_indices, val_indices]),
+                sample_size=512,
+            )
             quant_model_path, quant_details = quantize_model_for_fpga(
                 model,
-                np.concatenate([X_train, X_val], axis=0),
+                representative_data,
                 str(quantized_dir),
                 timestamp,
             )
@@ -1484,7 +1753,7 @@ def main():
                 'timestamp': timestamp,
                 'training_time': time.time() - cnn_start,
                 'total_beats': int(len(beats)),
-                'feature_tensor_shape': list(wavelet_tensors.shape[1:]),
+                'feature_tensor_shape': list(tensor_shape[1:]),
                 'test_accuracy': float(evaluation_summary.get('test_accuracy', 0.0)),
                 'test_loss': float(evaluation_summary.get('test_loss', 0.0)),
                 'validation_accuracy': float(evaluation_summary.get('val_accuracy', 0.0)),
@@ -1515,6 +1784,11 @@ def main():
                 'per_class_metrics': per_class_metrics,
                 'weight_statistics': weight_statistics,
                 'excluded_classes': dropped_classes,
+                'wavelet_cache': {
+                    'path': wavelet_info.get('path'),
+                    'dtype': wavelet_info.get('dtype'),
+                    'shape': tensor_shape,
+                },
             }
 
             os.makedirs('outputs/experiments', exist_ok=True)
@@ -1529,7 +1803,7 @@ def main():
             print("✅ Wavelet-CNN 训练完成！")
             print(f"📊 数据源: MIT-BIH心律失常数据库")
             print(f"💓 训练心拍数: {len(beats):,}")
-            print(f"🔧 小波张量尺寸: {wavelet_tensors.shape[1:]}")
+            print(f"🔧 小波张量尺寸: {tensor_shape[1:]}")
             print(
                 f"🧠 验证准确率: {evaluation_summary.get('val_accuracy', 0.0):.4f} / 测试准确率: {evaluation_summary.get('test_accuracy', 0.0):.4f}"
             )
