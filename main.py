@@ -4,6 +4,7 @@ ECG心电图分析系统 - 基于真实MIT-BIH数据训练
 """
 
 import argparse
+import inspect
 import json
 import os
 import shutil
@@ -39,6 +40,39 @@ from tensorflow.keras.utils import Sequence
 import matplotlib.pyplot as plt
 import warnings
 warnings.filterwarnings('ignore')
+
+
+def _build_sparse_categorical_loss(num_classes, label_smoothing=0.0):
+    """Return a SparseCategoricalCrossentropy-compatible loss.
+
+    Older TensorFlow builds shipped without the ``label_smoothing`` keyword on
+    ``SparseCategoricalCrossentropy``. This helper inspects the constructor and
+    falls back to a manual one-hot + categorical implementation when running on
+    such versions so the training script stays backward compatible.
+    """
+
+    scce_init = tf.keras.losses.SparseCategoricalCrossentropy
+    signature = inspect.signature(scce_init.__init__)
+
+    if 'label_smoothing' in signature.parameters:
+        return scce_init(label_smoothing=label_smoothing)
+
+    if label_smoothing > 0:
+        categorical = tf.keras.losses.CategoricalCrossentropy(
+            label_smoothing=label_smoothing
+        )
+
+        def smoothed_sparse_categorical_loss(y_true, y_pred):
+            y_true = tf.cast(tf.reshape(y_true, [-1]), tf.int32)
+            one_hot = tf.one_hot(y_true, depth=num_classes, dtype=y_pred.dtype)
+            return categorical(one_hot, y_pred)
+
+        smoothed_sparse_categorical_loss.__name__ = (
+            'sparse_categorical_crossentropy_smoothed'
+        )
+        return smoothed_sparse_categorical_loss
+
+    return scce_init()
 
 
 CARDIAC_WAVELET_BANDS = [
@@ -885,7 +919,7 @@ def build_cnn_model(input_shape, num_classes, learning_rate=3e-4, weight_decay=1
     model = tf.keras.Model(inputs=inputs, outputs=outputs, name='wavelet_regularized_cnn')
 
     optimizer = Adam(learning_rate=learning_rate)
-    loss = tf.keras.losses.SparseCategoricalCrossentropy(label_smoothing=0.1)
+    loss = _build_sparse_categorical_loss(num_classes, label_smoothing=0.1)
 
     model.compile(
         optimizer=optimizer,
