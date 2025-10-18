@@ -4,7 +4,7 @@
 
 本项目是基于MIT-BIH心电数据库的心电信号分类系统，目标是实现从Python软件模型到Xilinx FPGA硬件加速的完整部署流程。经过多轮迭代，当前主力管线使用**连续小波变换 (CWT) + 卷积神经网络 (CNN)** 组合，并针对 Pynq-Z2 平台提供从训练、量化、HLS 导出到部署的端到端工具链。
 
-如需了解在真实设备上落地的整体方案（含 ECG 采集、预处理、PL 推理与前端展示），请参考《[Pynq-Z2 End-to-End Deployment Blueprint](docs/pynq_z2_system_pipeline.md)》，文档详细说明了 PS 与 PL 的角色划分、数据流以及产品化落地清单。
+如需了解在真实设备上落地的整体方案（含 ECG 采集、预处理、PL 推理与前端展示），请参考《[Pynq-Z2 End-to-End Deployment Blueprint](docs/pynq_z2_system_pipeline.md)》，文档详细说明了 PS 与 PL 的角色划分、数据流以及产品化落地清单。若计划引入 Vitis Libraries 现成算子替换当前 HLS 内核中的部分模块，可再参考《[Vitis Libraries Operator Substitution Opportunities](docs/vitis_library_operator_options.md)》以了解可行性分析与迁移路径。
 
 当前工具链与产物总览（2019.2）：
 - 工具版本：Vivado 2019.2、Vivado HLS 2019.2（xsim）
